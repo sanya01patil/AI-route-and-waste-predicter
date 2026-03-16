@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeRoute AI – Intelligent Safety & Eco Routing</title>
+    <link rel="stylesheet" href="/css/style.css">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        /* ── SafeRoute page layout ─────────────────────────────────── */
+        .sr-layout {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1060px) {
+            .sr-layout {
+                grid-template-columns: 1fr;
+            }
+
+            #map {
+                height: 340px !important;
+            }
+        }
+
+        /* ── Map panel ─────────────────────────────────────────────── */
+        #map {
+            width: 100%;
+            height: 520px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            z-index: 1;
+            position: relative;
+        }
+
+        /* Custom Leaflet skin */
+        .leaflet-container {
+            background: #061009 !important;
+        }
+
+        .leaflet-tile-pane {
+            filter: hue-rotate(120deg) saturate(0.6) brightness(0.55) contrast(1.1);
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: #0c1f14 !important;
+            color: #e8f5ee !important;
+            border: 1px solid rgba(0, 255, 136, 0.25) !important;
+            border-radius: 10px !important;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.82rem;
+        }
+
+        .leaflet-popup-tip {
+            background: #0c1f14 !important;
+        }
+
+        /* Map legend */
+        .map-legend {
+            position: absolute;
+            bottom: 14px;
+            left: 14px;
+            background: rgba(6, 16, 9, 0.92);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 10px;
+            padding: 10px 14px;
+            z-index: 1000;
+            backdrop-filter: blur(8px);
+            font-size: 0.75rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-dot {
+            width: 13px;
+            height: 5px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        /* ── Input panel ───────────────────────────────────────────── */
+        .input-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* ── AI animation ──────────────────────────────────────────── */
+        .ai-anim {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .radar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 255, 136, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 14px;
+            position: relative;
+        }
+
+        .radar::before {
+            content: '';
+            position: absolute;
+            inset: 4px;
+            border-radius: 50%;
+            border: 1px solid rgba(0, 255, 136, 0.15);
+        }
+
+        .radar-sweep {
+            position: absolute;
+            width: 50%;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform-origin: left center;
+            background: linear-gradient(90deg, rgba(0, 255, 136, 0.9), transparent);
+            animation: spin 1.5s linear infinite;
+        }
+
+        .radar-icon {
+            font-size: 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Results wrapper ───────────────────────────────────────── */
+        .results-wrap {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        /* ── Route cards ───────────────────────────────────────────── */
+        .route-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .route-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .route-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            border-radius: 4px 0 0 4px;
+        }
+
+        .route-card.eco::before {
+            background: #22c55e;
+        }
+
+        .route-card.std::before {
+            background: #f59e0b;
+        }
+
+        .route-card.exp::before {
+            background: #ef4444;
+        }
+
+        .route-card:hover,
+        .route-card.active {
+            background: var(--bg-glass);
+            border-color: var(--border-hover);
+        }
+
+        .route-card.recommended-card {
+            border-color: rgba(0, 255, 136, 0.5);
+        }
+
+        .route-card.recommended-card::after {
+            content: '⭐ RECOMMENDED';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            background: rgba(0, 255, 136, 0.15);
+            color: #00ff88;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 4px;
+            padding: 2px 7px;
+        }
+
+        .route-name {
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .route-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .metric-chip {
+            background: rgba(0, 255, 136, 0.04);
+            border: 1px solid rgba(0, 255, 136, 0.08);
+            border-radius: 8px;
+            padding: 8px 6px;
+            text-align: center;
+        }
+
+        .metric-chip-val {
+            font-size: 0.88rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .metric-chip-lbl {
+            font-size: 0.62rem;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+
+        /* ── Comparison table ──────────────────────────────────────── */
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        .compare-table th {
+            padding: 9px 12px;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            text-align: left;
+            background: rgba(0, 255, 136, 0.03);
+        }
+
+        .compare-table td {
+            padding: 11px 12px;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.05);
+        }
+
+        .compare-table tr:last-child td {
+            border: none;
+        }
+
+        .compare-table tr:hover td {
+            background: var(--bg-glass);
+        }
+
+        .best-cell {
+            color: var(--green-primary);
+            font-weight: 700;
+        }
+
+        /* ── Risk badges ───────────────────────────────────────────── */
+        .risk-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+
+        .risk-low {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .risk-moderate {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .risk-high {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        /* ── Safety bar ────────────────────────────────────────────── */
+        .safety-bar-wrap {
+            background: rgba(0, 255, 136, 0.08);
+            border-radius: 999px;
+            height: 6px;
+            width: 70px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .safety-bar {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #ef4444, #22c55e);
+        }
+
+        /* ── Warnings list ─────────────────────────────────────────── */
+        .warning-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 12px;
+            background: rgba(245, 158, 11, 0.06);
+            border: 1px solid rgba(245, 158, 11, 0.15);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.82rem;
+        }
+
+        .warning-icon {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .warning-detail .label {
+            font-weight: 600;
+            color: #f59e0b;
+        }
+
+        .warning-detail .sub {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        /* ── Recommendation panel ──────────────────────────────────── */
+        .rec-panel {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.07), rgba(0, 196, 102, 0.04));
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .rec-panel::before {
+            content: '🤖';
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 4rem;
+            opacity: 0.07;
+        }
+
+        .rec-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .rec-name {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--green-primary);
+            margin-bottom: 12px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .rec-reason {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.06);
+        }
+
+        .rec-reason:last-child {
+            border: none;
+        }
+
+        .rec-reason::before {
+            content: '✓';
+            color: var(--green-primary);
+            font-weight: 800;
+        }
+
+        /* ── Mini radar chart container ────────────────────────────── */
+        .radar-chart-container {
+            position: relative;
+            height: 220px;
+        }
+
+        /* ── Conditions panel ───────────────────────────────────────── */
+        .conditions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        @media (max-width: 700px) {
+            .conditions-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .condition-chip {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+        }
+
+        .condition-chip .ci {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .condition-chip .ct {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .condition-chip .cs {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+        }
+
+        /* ── Mint panel ─────────────────────────────────────────────── */
+        .mint-panel {
+            display: none;
+        }
+
+        .mint-success {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">🌿</div>
+                <div class="logo-text">EcoChain AI<span>SafeRoute Module</span></div>
+            </div>
+            <span class="nav-section-label">Navigation</span>
+            <a href="/dashboard" class="nav-item"><span class="icon">📊</span> Dashboard</a>
+            <a href="/saferoute" class="nav-item active"><span class="icon">🗺️</span> SafeRoute AI</a>
+            <a href="/optimizer" class="nav-item"><span class="icon">🤖</span> AI Optimizer</a>
+            <a href="/wallet" class="nav-item"><span class="icon">⛓️</span> Blockchain Wallet</a>
+            <a href="/leaderboard" class="nav-item"><span class="icon">🏆</span> Leaderboard</a>
+            <div class="sidebar-footer">
+                <div class="user-pill">
+                    <div class="user-avatar" id="sidebar-avatar">U</div>
+                    <div class="user-pill-info">
+                        <div class="user-pill-name" id="sidebar-user-name">Loading...</div>
+                        <div class="user-pill-role" id="sidebar-user-role">🌿 Eco User</div>
+                    </div>
+                    <button onclick="logout()" class="copy-btn" title="Logout">🚪</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main class="main-content" style="padding-right:24px;">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">🗺️ SafeRoute AI</h1>
+                    <p class="page-subtitle">Intelligent safety + eco routing with accident prediction &amp; live
+                        traffic analysis</p>
+                </div>
+                <span class="badge badge-green">🛡️ Safety Engine Active</span>
+            </div>
+
+            <!-- ── Input + Map ─────────────────────────────── -->
+            <div class="sr-layout mb-3">
+
+                <!-- Input Panel -->
+                <div class="input-panel">
+                    <div class="card">
+                        <h3 style="margin-bottom:18px;">Plan Safe Journey</h3>
+
+                        <div class="form-group">
+                            <label class="form-label">📍 Start Location</label>
+                            <input type="text" id="sr-start" class="form-control" placeholder="e.g. Downtown Mumbai">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">🏁 Destination</label>
+                            <input type="text" id="sr-dest" class="form-control" placeholder="e.g. Airport Terminal 2">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">🌙 Time of Travel</label>
+                            <select id="sr-time" class="form-control">
+                                <option value="day">Day (6 AM – 8 PM)</option>
+                                <option value="night">Night (8 PM – 6 AM)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">🚗 Vehicle</label>
+                            <select id="sr-vehicle" class="form-control">
+                                <option value="car">Car (Petrol)</option>
+                                <option value="suv">SUV / Van</option>
+                                <option value="motorbike">Motorbike</option>
+                                <option value="electric">Electric Vehicle</option>
+                                <option value="bus">Public Bus</option>
+                            </select>
+                        </div>
+
+                        <button class="btn btn-primary btn-block btn-lg" id="sr-btn" onclick="runSafeRoute()">
+                            🛡️ Analyze Safe Routes
+                        </button>
+
+                        <!-- AI Animation -->
+                        <div class="ai-anim" id="ai-anim">
+                            <div class="radar">
+                                <div class="radar-sweep"></div>
+                                <div class="radar-icon">🛡️</div>
+                            </div>
+                            <div style="color:var(--green-primary); font-weight:600; margin-bottom:6px;">SafeRoute AI
+                                Analyzing...</div>
+                            <div id="ai-step-label" style="color:var(--text-muted); font-size:0.8rem;">Initializing
+                                safety engine</div>
+                            <div class="progress-bar-wrap mt-1" style="max-width:200px; margin:10px auto 0;">
+                                <div class="progress-bar" id="ai-pbar" style="width:0%; transition:width 0.4s ease;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Road Conditions -->
+                    <div class="card" id="conditions-card">
+                        <div class="section-header mb-2">
+                            <span class="section-title">🚦 Live Road Conditions</span>
+                            <span class="badge badge-orange"
+                                style="background:rgba(245,158,11,0.12); color:#f59e0b; border:1px solid rgba(245,158,11,0.25); font-size:0.65rem;">LIVE</span>
+                        </div>
+                        <div class="conditions-grid" id="conditions-list">
+                            <div class="text-muted text-sm" style="padding:8px;">Loading conditions...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map Panel -->
+                <div>
+                    <div style="position:relative;">
+                        <div id="map"></div>
+                        <div class="map-legend">
+                            <div
+                                style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); margin-bottom:8px;">
+                                Traffic Legend</div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#22c55e;"></div><span>Low Traffic (Safe
+                                    Route)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#f59e0b;"></div><span>Medium Traffic</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#ef4444;"></div><span>Heavy Traffic</span>
+                            </div>
+                            <div style="border-top:1px solid var(--border); margin:8px 0;"></div>
+                            <div class="legend-item"><span>⚠️</span><span>High-risk zone</span></div>
+                            <div class="legend-item"><span>🚧</span><span>Construction</span></div>
+                            <div class="legend-item"><span>🛑</span><span>Accident hotspot</span></div>
+                            <div class="legend-item"><span>🔧</span><span>Poor road condition</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── AI Results (hidden until analysis) ─────── -->
+            <div class="results-wrap" id="results-wrap">
+
+                <!-- AI Recommendation -->
+                <div class="rec-panel mb-2">
+                    <div class="rec-title">🤖 AI Smart Recommendation</div>
+                    <div class="rec-name" id="rec-name">—</div>
+                    <div id="rec-reasons"></div>
+                </div>
+
+                <!-- Route Cards -->
+                <div class="section-header mb-2">
+                    <span class="section-title">🛣️ Route Options</span>
+                    <span class="badge badge-blue" id="dist-badge"></span>
+                </div>
+                <div class="route-cards" id="route-cards"></div>
+
+                <!-- Comparison Table -->
+                <div class="card mb-3">
+                    <div class="section-header mb-2">
+                        <span class="section-title">📊 Full Route Comparison</span>
+                        <span class="badge badge-green">All Metrics</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="compare-table" id="compare-table">
+                            <thead>
+                                <tr>
+                                    <th>Route</th>
+                                    <th>⏱ Time</th>
+                                    <th>🚦 Traffic</th>
+                                    <th>📉 Eco Score</th>
+                                    <th>⚡ Risk %</th>
+                                    <th>🚦 Stops</th>
+                                    <th>🏎️ Speed</th>
+                                    <th>⛽ Fuel (L)</th>
+                                    <th>🌍 CO₂ (kg)</th>
+                                    <th>🛡️ Safety</th>
+                                </tr>
+                            </thead>
+                            <tbody id="compare-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Accident Risks + Radar Charts side by side -->
+                <div class="grid-2 mb-3">
+                    <!-- Accident Risk Detail -->
+                    <div class="card">
+                        <div class="section-header mb-2">
+                            <span class="section-title">⚠️ Accident Risk Analysis</span>
+                        </div>
+                        <div id="accident-detail"></div>
+                    </div>
+
+                    <!-- Radar Chart: Route Safety Profile -->
+                    <div class="card">
+                        <div class="section-header mb-2">
+                            <span class="section-title">🌐 Safety Profile Radar</span>
+                        </div>
+                        <div class="radar-chart-container">
+                            <canvas id="radarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Warning Zones -->
+                <div class="card mb-3">
+                    <div class="section-header mb-2">
+                        <span class="section-title">🚧 Warning Zones on Recommended Route</span>
+                    </div>
+                    <div id="warning-zones"></div>
+                </div>
+
+                <!-- Mint Credits Panel -->
+                <div class="card mint-panel" id="mint-panel">
+                    <div style="text-align:center; padding:8px;">
+                        <div style="font-size:2rem; margin-bottom:8px;">🪙</div>
+                        <h3 style="margin-bottom:8px;">Claim Carbon Credits</h3>
+                        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:20px;">
+                            You selected the eco-safe route.<br>
+                            Mint <strong id="mint-amount" class="text-green">0</strong> ECO tokens to the blockchain.
+                        </p>
+                        <button class="btn btn-primary btn-lg" id="mint-btn" onclick="mintCredits()"
+                            style="min-width:240px;">
+                            ⛓️ Mint ECO Credits
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mint Success -->
+                <div class="card mint-success" id="mint-success">
+                    <div style="text-align:center; padding:12px;">
+                        <div style="font-size:2.2rem; margin-bottom:10px;">🎉</div>
+                        <h3 class="text-green" style="margin-bottom:8px;">Credits Minted!</h3>
+                        <div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:14px;" id="mint-msg">
+                        </div>
+                        <div class="wallet-addr" id="sr-tx-hash"></div>
+                        <div style="margin-top:14px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+                            <a href="/wallet" class="btn btn-outline btn-sm">View Wallet →</a>
+                            <button class="btn btn-primary btn-sm" onclick="resetSafeRoute()">New Analysis</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div> <!-- /results-wrap -->
+        </main>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/js/api.js"></script>
+
+    <script>
+        requireAuth();
+        populateSidebar();
+
+        // ── Map init ──────────────────────────────────────────────────────────
+        const map = L.map('map', { zoomControl: true, attributionControl: false }).setView([19.07, 72.87], 12);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Attribution pill (light touch)
+        L.control.attribution({ position: 'bottomright', prefix: '' }).addTo(map);
+
+        let routeLayers = [];
+        let markerLayers = [];
+        let radarChart = null;
+        let currentData = null;
+        let selectedRouteIdx = 0;
+
+        // ── Load live conditions ───────────────────────────────────────────────
+        async function loadConditions() {
+            try {
+                const res = await API.get('/api/saferoute/conditions');
+                const list = document.getElementById('conditions-list');
+                list.innerHTML = res.conditions.map(c => `
+          <div class="condition-chip">
+            <span class="ci">${c.type}</span>
+            <div>
+              <div class="ct">${c.area}</div>
+              <div class="cs">${c.desc}</div>
+            </div>
+          </div>
+        `).join('');
+            } catch (e) { }
+        }
+        loadConditions();
+
+        // ── SafeRoute Analysis ─────────────────────────────────────────────────
+        async function runSafeRoute() {
+            const start = document.getElementById('sr-start').value.trim();
+            const dest = document.getElementById('sr-dest').value.trim();
+            const time = document.getElementById('sr-time').value;
+            const vehicle = document.getElementById('sr-vehicle').value;
+
+            if (!start || !dest) return showToast('Please enter start and destination.', 'error');
+
+            // Show animation
+            const btn = document.getElementById('sr-btn');
+            btn.style.display = 'none';
+            document.getElementById('ai-anim').style.display = 'block';
+            document.getElementById('results-wrap').style.display = 'none';
+            document.getElementById('mint-panel').style.display = 'none';
+            document.getElementById('mint-success').style.display = 'none';
+
+            const steps = [
+                { label: 'Fetching satellite traffic data', pct: 20 },
+                { label: 'Running accident prediction model', pct: 40 },
+                { label: 'Scoring road conditions & history', pct: 60 },
+                { label: 'Optimizing eco-safety tradeoff', pct: 80 },
+                { label: 'Generating route map', pct: 95 },
+            ];
+
+            let si = 0;
+            const stepInterval = setInterval(() => {
+                if (si < steps.length) {
+                    document.getElementById('ai-step-label').textContent = steps[si].label;
+                    document.getElementById('ai-pbar').style.width = steps[si].pct + '%';
+                    si++;
+                }
+            }, 400);
+
+            try {
+                await new Promise(r => setTimeout(r, 2200));
+                const res = await API.post('/api/saferoute/analyze', { start, destination: dest, timeOfDay: time, vehicleType: vehicle });
+                clearInterval(stepInterval);
+                document.getElementById('ai-pbar').style.width = '100%';
+
+                await new Promise(r => setTimeout(r, 300));
+                document.getElementById('ai-anim').style.display = 'none';
+                btn.style.display = 'block';
+
+                currentData = res.data;
+                renderResults(res.data);
+
+            } catch (err) {
+                clearInterval(stepInterval);
+                document.getElementById('ai-anim').style.display = 'none';
+                btn.style.display = 'block';
+                showToast('Analysis failed: ' + err.message, 'error');
+            }
+        }
+
+        // ── Render Results ─────────────────────────────────────────────────────
+        function renderResults(data) {
+            // Map: draw polylines
+            routeLayers.forEach(l => map.removeLayer(l));
+            markerLayers.forEach(l => map.removeLayer(l));
+            routeLayers = []; markerLayers = [];
+
+            const mapBounds = [];
+            data.mapData.polylines.forEach((pl, i) => {
+                const isRec = data.routes[i].recommended;
+                const line = L.polyline(pl.coords, {
+                    color: pl.color,
+                    weight: isRec ? 7 : 4,
+                    opacity: isRec ? 0.95 : 0.55,
+                    dashArray: i === 1 ? '8 6' : i === 2 ? '4 4' : null,
+                }).addTo(map);
+                line.bindPopup(pl.popup);
+                if (isRec) line.on('add', () => line.bringToFront());
+                routeLayers.push(line);
+                pl.coords.forEach(c => mapBounds.push(c));
+
+                // Warning markers
+                pl.markers.forEach(m => {
+                    const icon = L.divIcon({
+                        html: `<div style="font-size:1.1rem; background:rgba(6,16,9,0.85); border:1px solid rgba(245,158,11,0.4); border-radius:6px; padding:3px 5px; white-space:nowrap;">${m.icon}</div>`,
+                        iconSize: [32, 28], iconAnchor: [16, 14], className: ''
+                    });
+                    const mkr = L.marker([m.lat, m.lng], { icon })
+                        .addTo(map).bindPopup(`<small>${m.desc}</small>`);
+                    markerLayers.push(mkr);
+                });
+            });
+
+            // Start & end markers
+            const startIcon = L.divIcon({ html: '<div style="width:14px;height:14px;border-radius:50%;background:#00ff88;border:3px solid #000;box-shadow:0 0 8px #00ff88;"></div>', iconSize: [14, 14], iconAnchor: [7, 7], className: '' });
+            const endIcon = L.divIcon({ html: '<div style="width:14px;height:14px;border-radius:50%;background:#ef4444;border:3px solid #000;box-shadow:0 0 8px #ef4444;"></div>', iconSize: [14, 14], iconAnchor: [7, 7], className: '' });
+            L.marker(data.mapData.startCoord, { icon: startIcon }).addTo(map).bindPopup('<b>Start: ' + data.start + '</b>');
+            L.marker(data.mapData.destCoord, { icon: endIcon }).addTo(map).bindPopup('<b>Destination: ' + data.destination + '</b>');
+            if (mapBounds.length > 1) map.fitBounds(mapBounds, { padding: [30, 30] });
+
+            // Recommendation
+            document.getElementById('rec-name').textContent = data.recommendation.routeName;
+            document.getElementById('rec-reasons').innerHTML = data.recommendation.reasoning.map(r =>
+                `<div class="rec-reason">${r}</div>`
+            ).join('');
+
+            // Route cards
+            document.getElementById('dist-badge').textContent = `${data.routes[0].distanceKm}–${data.routes[2].distanceKm} km`;
+            document.getElementById('route-cards').innerHTML = data.routes.map((r, i) => `
+        <div class="route-card ${r.type} ${r.recommended ? 'recommended-card' : ''} ${i === 0 ? 'active' : ''}" id="rcard-${i}" onclick="selectRouteCard(${i})">
+          <div class="flex-between mb-1">
+            <span class="route-name" style="color:${r.color};">${r.name}</span>
+            <span class="risk-pill risk-${r.riskLabel.toLowerCase()}">${r.riskLabel} Risk</span>
+          </div>
+          <div class="route-metrics">
+            <div class="metric-chip">
+              <div class="metric-chip-val">${r.timeMinutes} min</div>
+              <div class="metric-chip-lbl">Travel Time</div>
+            </div>
+            <div class="metric-chip">
+              <div class="metric-chip-val" style="color:${r.color};">${r.accidentRisk}%</div>
+              <div class="metric-chip-lbl">Accident Risk</div>
+            </div>
+            <div class="metric-chip">
+              <div class="metric-chip-val" style="color:var(--green-primary);">${r.safetyRating}</div>
+              <div class="metric-chip-lbl">Safety Score</div>
+            </div>
+            <div class="metric-chip">
+              <div class="metric-chip-val" style="color:var(--accent-orange);">${r.ecoScore}</div>
+              <div class="metric-chip-lbl">Eco Score</div>
+            </div>
+            <div class="metric-chip">
+              <div class="metric-chip-val">${r.avgSpeed} km/h</div>
+              <div class="metric-chip-lbl">Avg Speed</div>
+            </div>
+            <div class="metric-chip">
+              <div class="metric-chip-val">${r.stopFrequency}</div>
+              <div class="metric-chip-lbl">Signal Stops</div>
+            </div>
+            <div class="metric-chip">
+              <div class="metric-chip-val">${r.distanceKm} km</div>
+              <div class="metric-chip-lbl">Distance</div>
+            </div>
+            <div class="metric-chip">
+              <div class="metric-chip-val">${r.fuelUsed} L</div>
+              <div class="metric-chip-lbl">Fuel Used</div>
+            </div>
+            <div class="metric-chip">
+              <div class="metric-chip-val">${r.co2Emission} kg</div>
+              <div class="metric-chip-lbl">CO₂ Emitted</div>
+            </div>
+          </div>
+          <div style="margin-top:10px; font-size:0.72rem; color:var(--text-muted);">
+            Road: ${r.roadType} &nbsp;·&nbsp; Traffic: <span style="color:${r.trafficColor === 'green' ? '#22c55e' : r.trafficColor === 'yellow' ? '#f59e0b' : '#ef4444'}; font-weight:600;">${r.trafficLevel}</span>
+            ${r.recommended && r.creditsEarned > 0 ? `&nbsp;·&nbsp; <span class="text-green">🪙 +${r.creditsEarned} ECO on selection</span>` : ''}
+          </div>
+        </div>
+      `).join('');
+
+            // Comparison table
+            const minTime = Math.min(...data.routes.map(r => r.timeMinutes));
+            const minFuel = Math.min(...data.routes.map(r => r.fuelUsed));
+            const minCO2 = Math.min(...data.routes.map(r => r.co2Emission));
+            const minRisk = Math.min(...data.routes.map(r => r.accidentRisk));
+            const maxSafety = Math.max(...data.routes.map(r => r.safetyRating));
+            const minEco = Math.min(...data.routes.map(r => r.ecoScore));
+
+            document.getElementById('compare-body').innerHTML = data.routes.map(r => {
+                const tc = r.trafficColor === 'green' ? '#22c55e' : r.trafficColor === 'yellow' ? '#f59e0b' : '#ef4444';
+                const barW = Math.round((r.safetyRating / 100) * 100);
+                return `<tr>
+          <td style="font-weight:600; color:${r.color};">${r.name}</td>
+          <td class="${r.timeMinutes === minTime ? 'best-cell' : ''}">${r.timeMinutes} min</td>
+          <td><span style="color:${tc}; font-weight:600;">${r.trafficLevel}</span> (${r.traffic}%)</td>
+          <td class="${r.ecoScore === minEco ? 'best-cell' : ''}">${r.ecoScore}</td>
+          <td class="${r.accidentRisk === minRisk ? 'best-cell' : ''}">
+            <span class="risk-pill risk-${r.riskLabel.toLowerCase()}">${r.accidentRisk}%</span>
+          </td>
+          <td>${r.stopFrequency}</td>
+          <td>${r.avgSpeed} km/h</td>
+          <td class="${r.fuelUsed === minFuel ? 'best-cell' : ''}">${r.fuelUsed} L</td>
+          <td class="${r.co2Emission === minCO2 ? 'best-cell' : ''}">${r.co2Emission} kg</td>
+          <td>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div class="safety-bar-wrap"><div class="safety-bar" style="width:${barW}%;"></div></div>
+              <span class="${r.safetyRating === maxSafety ? 'best-cell' : ''}">${r.safetyRating}</span>
+            </div>
+          </td>
+        </tr>`;
+            }).join('');
+
+            // Accident Risk Detail
+            document.getElementById('accident-detail').innerHTML = data.routes.map(r => `
+        <div style="margin-bottom:16px;">
+          <div class="flex-between mb-1">
+            <span style="font-size:0.83rem; font-weight:600; color:${r.color};">${r.name}</span>
+            <span class="risk-pill risk-${r.riskLabel.toLowerCase()}">${r.riskLabel} · ${r.accidentRisk}%</span>
+          </div>
+          <div class="progress-bar-wrap">
+            <div style="height:100%; border-radius:999px; background:${r.riskLabel === 'Low' ? '#22c55e' : r.riskLabel === 'Moderate' ? '#f59e0b' : '#ef4444'}; width:${r.accidentRisk}%; transition:width 0.8s ease; box-shadow:0 0 6px ${r.riskLabel === 'Low' ? '#22c55e' : r.riskLabel === 'Moderate' ? '#f59e0b' : '#ef4444'};"></div>
+          </div>
+          <div style="font-size:0.72rem; color:var(--text-muted); margin-top:4px;">
+            Road type: ${r.roadType} · Night multiplier: ${data.timeOfDay === 'night' ? '+18%' : 'None'}
+          </div>
+        </div>
+      `).join('');
+
+            // Radar Chart
+            if (radarChart) radarChart.destroy();
+            radarChart = new Chart(document.getElementById('radarChart'), {
+                type: 'radar',
+                data: {
+                    labels: ['Safety', 'Eco Score', 'Speed', 'Low Risk', 'Traffic Flow'],
+                    datasets: data.routes.map(r => ({
+                        label: r.name,
+                        data: [
+                            r.safetyRating,
+                            Math.round(100 - r.co2Emission * 3),
+                            Math.min(100, Math.round((70 - r.timeMinutes * 0.5) + 50)),
+                            100 - r.accidentRisk,
+                            100 - r.traffic
+                        ],
+                        borderColor: r.color,
+                        backgroundColor: r.color + '18',
+                        borderWidth: 2,
+                        pointBackgroundColor: r.color,
+                        pointRadius: 4
+                    }))
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#8baa98', font: { size: 10 }, boxWidth: 12 } },
+                        tooltip: { backgroundColor: '#0c1f14', borderColor: 'rgba(0,255,136,0.2)', borderWidth: 1, titleColor: '#00ff88', bodyColor: '#e8f5ee' }
+                    },
+                    scales: {
+                        r: {
+                            min: 0, max: 100, ticks: { stepSize: 25, display: false },
+                            grid: { color: 'rgba(0,255,136,0.1)' },
+                            angleLines: { color: 'rgba(0,255,136,0.08)' },
+                            pointLabels: { color: '#8baa98', font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+
+            // Warning zones (for recommended route)
+            const rec = data.routes.find(r => r.recommended) || data.routes[0];
+            document.getElementById('warning-zones').innerHTML = rec.warningZones.map(z => `
+        <div class="warning-item">
+          <span class="warning-icon">${z.type.split(' ')[0]}</span>
+          <div class="warning-detail">
+            <div class="label">${z.type}</div>
+            <div class="sub">${z.desc} · at km ${z.km}</div>
+          </div>
+        </div>
+      `).join('');
+
+            // Mint panel
+            if (rec.creditsEarned > 0) {
+                document.getElementById('mint-amount').textContent = rec.creditsEarned;
+                document.getElementById('mint-panel').style.display = 'block';
+            }
+
+            // AI engine info toast
+            showToast(`✅ SafeRoute AI (${data.aiEngine.model}) – ${data.aiEngine.confidence}% confidence · ${data.aiEngine.processTime}s`, 'success', 4000);
+
+            document.getElementById('results-wrap').style.display = 'block';
+        }
+
+        function selectRouteCard(idx) {
+            document.querySelectorAll('.route-card').forEach((el, i) => {
+                el.classList.toggle('active', i === idx);
+            });
+            selectedRouteIdx = idx;
+            // Highlight route on map
+            routeLayers.forEach((l, i) => {
+                l.setStyle({ weight: i === idx ? 8 : 3, opacity: i === idx ? 1 : 0.4 });
+                if (i === idx) l.bringToFront();
+            });
+        }
+
+        // ── Mint Credits ───────────────────────────────────────────────────────
+        async function mintCredits() {
+            if (!currentData) return;
+            const rec = currentData.routes.find(r => r.recommended) || currentData.routes[0];
+            const btn = document.getElementById('mint-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Minting...';
+
+            try {
+                const res = await API.post('/api/blockchain/mint', {
+                    creditsEarned: rec.creditsEarned,
+                    greenBoost: Math.round(rec.creditsEarned * 0.5),
+                    fuelSaved: Math.max(0, currentData.routes[2].fuelUsed - rec.fuelUsed),
+                    co2Reduced: parseFloat((currentData.routes[2].co2Emission - rec.co2Emission).toFixed(3)),
+                    route: `SafeRoute: ${currentData.start} → ${currentData.destination}`
+                });
+
+                document.getElementById('mint-panel').style.display = 'none';
+                document.getElementById('mint-success').style.display = 'block';
+                document.getElementById('mint-msg').textContent =
+                    `+${rec.creditsEarned} ECO minted · New balance: ${res.newBalance} ECO`;
+                document.getElementById('sr-tx-hash').textContent = res.transaction.txHash;
+
+                const u = getUser();
+                setSession(getToken(), { ...u, carbonCredits: res.newBalance });
+                showToast(`🎉 ${rec.creditsEarned} ECO credits minted!`, 'success', 4000);
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerHTML = '⛓️ Mint ECO Credits';
+                showToast('Minting failed: ' + err.message, 'error');
+            }
+        }
+
+        function resetSafeRoute() {
+            document.getElementById('sr-start').value = '';
+            document.getElementById('sr-dest').value = '';
+            document.getElementById('results-wrap').style.display = 'none';
+            routeLayers.forEach(l => map.removeLayer(l));
+            markerLayers.forEach(l => map.removeLayer(l));
+            routeLayers = []; markerLayers = [];
+            currentData = null;
+        }
+    </script>
+</body>
+
+</html>

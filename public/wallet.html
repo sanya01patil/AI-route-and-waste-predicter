@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoChain AI – Blockchain Wallet</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .wallet-hero {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.07) 0%, rgba(0, 196, 102, 0.03) 100%);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: var(--radius-xl);
+            padding: 36px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wallet-hero::before {
+            content: '⛓️';
+            position: absolute;
+            right: 32px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 5rem;
+            opacity: 0.08;
+        }
+
+        .wallet-balance-big {
+            font-size: 3.5rem;
+            font-weight: 800;
+            font-family: 'Space Grotesk', sans-serif;
+            color: var(--green-primary);
+            line-height: 1;
+            text-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+        }
+
+        .network-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 255, 136, 0.08);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 999px;
+            padding: 5px 14px;
+            font-size: 0.78rem;
+            color: var(--green-primary);
+        }
+
+        .network-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green-primary);
+            animation: pulse-glow 2s infinite;
+        }
+
+        .ledger-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 18px;
+            background: rgba(0, 255, 136, 0.04);
+            border-bottom: 1px solid var(--border);
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+        }
+
+        .ledger-lock {
+            font-size: 1.2rem;
+        }
+
+        .ledger-info {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .empty-state .big-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .block-chip {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            background: rgba(0, 255, 136, 0.06);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 2px 6px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">🌿</div>
+                <div class="logo-text">EcoChain AI<span>Sustainable Transport</span></div>
+            </div>
+            <span class="nav-section-label">Main</span>
+            <a href="/dashboard" class="nav-item"><span class="icon">📊</span> Dashboard</a>
+            <a href="/saferoute" class="nav-item"><span class="icon">🗺️</span> SafeRoute AI</a>
+            <a href="/optimizer" class="nav-item"><span class="icon">🤖</span> AI Optimizer</a>
+            <a href="/wallet" class="nav-item active"><span class="icon">⛓️</span> Blockchain Wallet</a>
+            <a href="/leaderboard" class="nav-item"><span class="icon">🏆</span> Leaderboard</a>
+            <div class="sidebar-footer">
+                <div class="user-pill">
+                    <div class="user-avatar" id="sidebar-avatar">U</div>
+                    <div class="user-pill-info">
+                        <div class="user-pill-name" id="sidebar-user-name">Loading...</div>
+                        <div class="user-pill-role" id="sidebar-user-role">🌿 Eco User</div>
+                    </div>
+                    <button onclick="logout()" class="copy-btn" title="Logout">🚪</button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">⛓️ Blockchain Wallet</h1>
+                    <p class="page-subtitle">Your immutable carbon credit ledger on EcoChain Mainnet</p>
+                </div>
+                <a href="/optimizer" class="btn btn-primary">+ Earn Credits</a>
+            </div>
+
+            <!-- Wallet Hero -->
+            <div class="wallet-hero">
+                <div style="margin-bottom:16px;">
+                    <span class="network-badge"><span class="network-dot"></span> EcoChain-Mainnet-v1 · Live</span>
+                </div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Carbon Credit Balance</div>
+                <div class="wallet-balance-big" id="wallet-balance">0</div>
+                <div style="color:var(--text-secondary); font-size:0.85rem; margin-top:4px;">ECO Tokens</div>
+
+                <div style="margin-top:20px;">
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:6px;">Wallet Address</div>
+                    <div class="wallet-addr" id="wallet-address-display" style="max-width:480px;">
+                        <span id="wallet-addr-text">Loading...</span>
+                        <button class="copy-btn" id="copy-btn" onclick="doCopy()">📋</button>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:20px; margin-top:20px; flex-wrap:wrap;">
+                    <div>
+                        <div style="font-size:0.72rem; color:var(--text-muted);">Contract Address</div>
+                        <div class="mono" style="font-size:0.75rem; color:var(--text-secondary);" id="contract-addr">—
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.72rem; color:var(--text-muted);">Green Score</div>
+                        <div style="font-size:1rem; font-weight:700; color:var(--accent-orange);"
+                            id="green-score-display">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ledger -->
+            <div class="card" style="padding:0; overflow:hidden;">
+                <div class="ledger-header">
+                    <span class="ledger-lock">🔒</span>
+                    <div>
+                        <div style="font-weight:600; font-size:0.9rem;">Immutable Transaction Ledger</div>
+                        <div class="ledger-info">Records are tamper-proof. Editing is cryptographically prevented. <span
+                                id="tx-count">0</span> transactions.</div>
+                    </div>
+                    <span class="immutable-badge" style="margin-left:auto;">🔗 Consensus 100%</span>
+                </div>
+                <div id="ledger-table-wrap">
+                    <div class="empty-state" id="empty-ledger">
+                        <span class="big-icon">🔐</span>
+                        No transactions yet.<br>
+                        <a href="/optimizer" style="color:var(--green-primary); text-decoration:none;">Optimize a
+                            route</a> to mint your first credits.
+                    </div>
+                    <div class="table-wrap" id="ledger-table" style="display:none;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Block</th>
+                                    <th>TX Hash</th>
+                                    <th>Route</th>
+                                    <th>CO₂ Saved</th>
+                                    <th>Credits</th>
+                                    <th>Balance</th>
+                                    <th>Time</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ledger-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export -->
+            <div class="card mt-2" style="text-align:center; padding:20px;">
+                <div style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:14px;">
+                    📄 Download your complete carbon impact report
+                </div>
+                <button class="btn btn-outline" onclick="downloadReport()">
+                    ⬇️ Download Impact Report (PDF)
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        requireAuth();
+        populateSidebar();
+
+        let walletData = null;
+        let historyData = [];
+
+        async function loadWallet() {
+            try {
+                const [walRes, histRes] = await Promise.all([
+                    API.get('/api/blockchain/wallet'),
+                    API.get('/api/blockchain/history')
+                ]);
+
+                walletData = walRes;
+                historyData = histRes.transactions;
+
+                // Balance
+                document.getElementById('wallet-balance').textContent = walRes.carbonCredits.toLocaleString();
+                document.getElementById('wallet-addr-text').textContent = walRes.walletAddress;
+                document.getElementById('contract-addr').textContent = shortenAddr(walRes.contractAddress);
+                document.getElementById('green-score-display').textContent = walRes.greenScore + ' pts';
+                document.getElementById('tx-count').textContent = histRes.count;
+
+                // Ledger
+                if (historyData.length === 0) {
+                    document.getElementById('empty-ledger').style.display = 'block';
+                    document.getElementById('ledger-table').style.display = 'none';
+                } else {
+                    document.getElementById('empty-ledger').style.display = 'none';
+                    document.getElementById('ledger-table').style.display = 'block';
+                    document.getElementById('ledger-body').innerHTML = historyData.map(tx => `
+            <tr>
+              <td><span class="block-chip">#${tx.blockNumber}</span></td>
+              <td class="mono" style="font-size:0.7rem; color:var(--text-muted);">${tx.txHash.slice(0, 16)}...</td>
+              <td style="max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.8rem;">${tx.route}</td>
+              <td class="text-green">${tx.co2Reduced} kg</td>
+              <td style="color:var(--accent-orange); font-weight:700;">+${tx.amount} ECO</td>
+              <td class="fw-bold">${tx.balance.toLocaleString()}</td>
+              <td style="color:var(--text-muted); font-size:0.78rem;">${formatDate(tx.timestamp)}</td>
+              <td><span class="badge badge-green">✓ ${tx.status}</span></td>
+            </tr>
+          `).join('');
+                }
+
+            } catch (err) {
+                showToast('Failed to load wallet: ' + err.message, 'error');
+            }
+        }
+
+        function doCopy() {
+            const addr = document.getElementById('wallet-addr-text').textContent;
+            copyToClipboard(addr, document.getElementById('copy-btn'));
+        }
+
+        function downloadReport() {
+            const user = getUser();
+            const lines = [
+                '========================================',
+                '    ECOCHAIN AI – CARBON IMPACT REPORT  ',
+                '========================================',
+                '',
+                `User: ${user?.name || 'N/A'}`,
+                `Wallet: ${walletData?.walletAddress || 'N/A'}`,
+                `Green Score: ${walletData?.greenScore || 0}`,
+                `Carbon Credits: ${walletData?.carbonCredits || 0} ECO`,
+                `Report Generated: ${new Date().toLocaleString()}`,
+                '',
+                '--- TRANSACTION HISTORY ---',
+                '',
+                ...historyData.map(tx =>
+                    `Block #${tx.blockNumber} | ${tx.txHash.slice(0, 20)}... | ${tx.route} | +${tx.amount} ECO | CO₂ -${tx.co2Reduced}kg | ${formatDate(tx.timestamp)}`
+                ),
+                '',
+                '--- SUMMARY ---',
+                `Total Transactions: ${historyData.length}`,
+                `Total CO₂ Reduced: ${historyData.reduce((s, t) => s + t.co2Reduced, 0).toFixed(3)} kg`,
+                `Total Fuel Saved: ${historyData.reduce((s, t) => s + (t.fuelSaved || 0), 0).toFixed(2)} L`,
+                '',
+                'EcoChain AI | Decentralized Sustainable Transport',
+                'Ledger is cryptographically immutable and tamper-proof.',
+                '========================================'
+            ];
+
+            const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ecochain-report-${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Report downloaded! 📄', 'success');
+        }
+
+        loadWallet();
+    </script>
+</body>
+
+</html>

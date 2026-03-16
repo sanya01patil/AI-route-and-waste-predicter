@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoChain AI – Route Optimizer</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .optimizer-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1000px) {
+            .optimizer-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .ai-processing {
+            display: none;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .ai-brain {
+            font-size: 3rem;
+            animation: float 1.5s ease-in-out infinite;
+            display: block;
+            margin-bottom: 16px;
+        }
+
+        .ai-progress-steps {
+            margin-top: 20px;
+        }
+
+        .ai-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            text-align: left;
+            transition: all 0.3s ease;
+        }
+
+        .ai-step.done {
+            color: var(--green-primary);
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .ai-step.active {
+            color: var(--text-primary);
+            background: rgba(0, 255, 136, 0.08);
+        }
+
+        .results-section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .route-option {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .route-option:hover {
+            border-color: var(--border-hover);
+            background: var(--bg-glass);
+        }
+
+        .route-option.selected {
+            border-color: var(--green-primary);
+            background: rgba(0, 255, 136, 0.07);
+        }
+
+        .route-option.recommended {
+            border-color: rgba(0, 255, 136, 0.4);
+        }
+
+        .route-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .metric-bar {
+            margin-bottom: 14px;
+        }
+
+        .metric-label-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            margin-bottom: 6px;
+        }
+
+        .waypoint-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .waypoint-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.82rem;
+        }
+
+        .waypoint-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            border: 2px solid var(--green-primary);
+        }
+
+        .waypoint-dot.filled {
+            background: var(--green-primary);
+        }
+
+        .waypoint-line {
+            width: 2px;
+            height: 20px;
+            background: var(--border);
+            margin-left: 4px;
+        }
+
+        .mint-success {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">🌿</div>
+                <div class="logo-text">EcoChain AI<span>Sustainable Transport</span></div>
+            </div>
+            <span class="nav-section-label">Main</span>
+            <a href="/dashboard" class="nav-item"><span class="icon">📊</span> Dashboard</a>
+            <a href="/saferoute" class="nav-item"><span class="icon">🗺️</span> SafeRoute AI</a>
+            <a href="/optimizer" class="nav-item active"><span class="icon">🤖</span> AI Optimizer</a>
+            <a href="/wallet" class="nav-item"><span class="icon">⛓️</span> Blockchain Wallet</a>
+            <a href="/leaderboard" class="nav-item"><span class="icon">🏆</span> Leaderboard</a>
+            <div class="sidebar-footer">
+                <div class="user-pill">
+                    <div class="user-avatar" id="sidebar-avatar">U</div>
+                    <div class="user-pill-info">
+                        <div class="user-pill-name" id="sidebar-user-name">Loading...</div>
+                        <div class="user-pill-role" id="sidebar-user-role">🌿 Eco User</div>
+                    </div>
+                    <button onclick="logout()" class="copy-btn" title="Logout">🚪</button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">🤖 AI Route Optimizer</h1>
+                    <p class="page-subtitle">Powered by ML heuristics · Earn carbon credits for eco choices</p>
+                </div>
+            </div>
+
+            <div class="optimizer-grid">
+                <!-- Left: Input Form -->
+                <div>
+                    <div class="card">
+                        <h3 style="margin-bottom:20px;">Plan Your Journey</h3>
+
+                        <div class="form-group">
+                            <label class="form-label">📍 Starting Location</label>
+                            <input type="text" id="start" class="form-control"
+                                placeholder="e.g. Central Park, New York">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">🏁 Destination</label>
+                            <input type="text" id="destination" class="form-control"
+                                placeholder="e.g. Times Square, New York">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">🚗 Vehicle Type</label>
+                            <select id="vehicle" class="form-control">
+                                <option value="car">Car (Petrol)</option>
+                                <option value="suv">SUV / Van</option>
+                                <option value="motorbike">Motorbike</option>
+                                <option value="electric">Electric Vehicle</option>
+                                <option value="bus">Public Bus (shared)</option>
+                            </select>
+                        </div>
+
+                        <button class="btn btn-primary btn-block btn-lg" id="optimize-btn" onclick="runOptimizer()">
+                            🤖 Analyze & Optimize Route
+                        </button>
+
+                        <div class="ai-processing" id="ai-processing">
+                            <span class="ai-brain">🧠</span>
+                            <div style="color:var(--green-primary); font-weight:600;">AI Processing...</div>
+                            <div style="color:var(--text-muted); font-size:0.82rem; margin-top:4px;">Running traffic
+                                prediction model</div>
+                            <div class="ai-progress-steps" id="ai-steps">
+                                <div class="ai-step" id="step-1">⬡ Fetching real-time traffic data</div>
+                                <div class="ai-step" id="step-2">⬡ Running emission models</div>
+                                <div class="ai-step" id="step-3">⬡ Calculating eco-route variants</div>
+                                <div class="ai-step" id="step-4">⬡ Scoring carbon impact</div>
+                                <div class="ai-step" id="step-5">⬡ Generating optimization report</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Confidence -->
+                    <div class="card mt-2" id="confidence-card" style="display:none;">
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">AI Model Confidence
+                        </div>
+                        <div class="flex-between mb-1">
+                            <span style="font-size:0.85rem;">Route Accuracy</span>
+                            <span class="text-green fw-bold" id="confidence-val">0%</span>
+                        </div>
+                        <div class="progress-bar-wrap">
+                            <div class="progress-bar" id="confidence-bar" style="width:0%"></div>
+                        </div>
+                        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:8px;" id="analysis-time">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Results -->
+                <div class="results-section" id="results">
+                    <!-- Route Comparison -->
+                    <div class="card mb-2">
+                        <h3 style="margin-bottom:16px;">🛣️ Route Options <span id="distance-badge"
+                                class="badge badge-blue" style="margin-left:8px;"></span></h3>
+                        <div id="route-options"></div>
+                    </div>
+
+                    <!-- Eco Metrics -->
+                    <div class="card mb-2">
+                        <h3 style="margin-bottom:20px;">📊 Eco Impact Analysis</h3>
+                        <div class="metric-bar">
+                            <div class="metric-label-row">
+                                <span>⛽ Fuel Saved</span>
+                                <span class="text-green fw-bold" id="fuel-val">0 L</span>
+                            </div>
+                            <div class="progress-bar-wrap">
+                                <div class="progress-bar" id="fuel-bar" style="width:0%"></div>
+                            </div>
+                            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:4px;">Baseline: <span
+                                    id="baseline-fuel">0</span> L</div>
+                        </div>
+                        <div class="metric-bar">
+                            <div class="metric-label-row">
+                                <span>🌍 CO₂ Reduced</span>
+                                <span class="text-blue fw-bold" id="co2-val">0 kg</span>
+                            </div>
+                            <div class="progress-bar-wrap" style="background:rgba(0,212,255,0.08);">
+                                <div class="progress-bar" id="co2-bar"
+                                    style="width:0%; background:linear-gradient(90deg,#007a40,#00d4ff);"></div>
+                            </div>
+                            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:4px;">Baseline: <span
+                                    id="baseline-co2">0</span> kg</div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px;">
+                            <div
+                                style="text-align:center; padding:16px; background:var(--bg-glass); border-radius:10px; border:1px solid var(--border);">
+                                <div style="font-size:1.6rem; font-weight:800; color:var(--green-primary);"
+                                    id="credits-preview">0</div>
+                                <div style="font-size:0.75rem; color:var(--text-muted);">ECO Credits to Earn</div>
+                            </div>
+                            <div
+                                style="text-align:center; padding:16px; background:var(--bg-glass); border-radius:10px; border:1px solid var(--border);">
+                                <div style="font-size:1.6rem; font-weight:800; color:var(--accent-orange);"
+                                    id="time-val">0 min</div>
+                                <div style="font-size:0.75rem; color:var(--text-muted);">Estimated Travel Time</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Traffic Chart -->
+                    <div class="card mb-2">
+                        <h3 style="margin-bottom:16px;">🚦 24-Hour Traffic Prediction</h3>
+                        <div class="chart-container">
+                            <canvas id="trafficChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Waypoints -->
+                    <div class="card mb-2">
+                        <h3 style="margin-bottom:16px;">📌 Route Waypoints</h3>
+                        <div class="waypoint-list" id="waypoints"></div>
+                    </div>
+
+                    <!-- Mint Button -->
+                    <div class="card" id="mint-card">
+                        <div style="text-align:center; padding:8px 0;">
+                            <div style="font-size:2rem; margin-bottom:8px;">🪙</div>
+                            <h3 style="margin-bottom:8px;">Claim Carbon Credits</h3>
+                            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:20px;">Select the
+                                Eco Express route to mint <strong id="mint-credits-preview"
+                                    class="text-green">0</strong> ECO credits to the blockchain</p>
+                            <button class="btn btn-primary btn-lg" id="mint-btn" onclick="mintCredits()"
+                                style="min-width:240px;">
+                                ⛓️ Mint ECO Credits
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mint Success -->
+                    <div class="mint-success card" id="mint-success">
+                        <div style="text-align:center; padding:12px 0;">
+                            <div style="font-size:2.5rem; margin-bottom:12px;">🎉</div>
+                            <h3 class="text-green" style="margin-bottom:8px;">Credits Minted!</h3>
+                            <div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:16px;"
+                                id="mint-msg"></div>
+                            <div class="wallet-addr" id="tx-hash-display"></div>
+                            <div
+                                style="margin-top:16px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+                                <a href="/wallet" class="btn btn-outline btn-sm">View Wallet →</a>
+                                <button class="btn btn-primary btn-sm" onclick="resetOptimizer()">Optimize Another
+                                    Route</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        requireAuth();
+        populateSidebar();
+
+        let optimizationData = null;
+        let trafficChart = null;
+
+        async function runOptimizer() {
+            const start = document.getElementById('start').value.trim();
+            const destination = document.getElementById('destination').value.trim();
+            const vehicleType = document.getElementById('vehicle').value;
+
+            if (!start || !destination) return showToast('Please enter start and destination.', 'error');
+
+            const btn = document.getElementById('optimize-btn');
+            btn.style.display = 'none';
+            document.getElementById('ai-processing').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('confidence-card').style.display = 'none';
+            document.getElementById('mint-success').style.display = 'none';
+            document.getElementById('mint-card').style.display = 'block';
+            document.getElementById('mint-btn').disabled = false;
+            document.getElementById('mint-btn').innerHTML = '⛓️ Mint ECO Credits';
+
+            // Animate steps
+            const steps = ['step-1', 'step-2', 'step-3', 'step-4', 'step-5'];
+            const delays = [0, 400, 800, 1200, 1600];
+            steps.forEach((id, i) => {
+                setTimeout(() => {
+                    if (i > 0) document.getElementById(steps[i - 1]).className = 'ai-step done';
+                    document.getElementById(id).className = 'ai-step active';
+                    document.getElementById(id).textContent = '⟳ ' + document.getElementById(id).textContent.slice(2);
+                }, delays[i]);
+            });
+
+            try {
+                await new Promise(r => setTimeout(r, 2200));
+                const res = await API.post('/api/ai/optimize', { start, destination, vehicleType });
+                optimizationData = res.data;
+
+                setTimeout(() => {
+                    document.getElementById(steps[steps.length - 1]).className = 'ai-step done';
+                    document.getElementById('ai-processing').style.display = 'none';
+                    renderResults(res.data);
+                }, 300);
+
+            } catch (err) {
+                document.getElementById('ai-processing').style.display = 'none';
+                btn.style.display = 'block';
+                showToast('Optimization failed: ' + err.message, 'error');
+            }
+        }
+
+        function renderResults(data) {
+            // Show confidence
+            const confCard = document.getElementById('confidence-card');
+            confCard.style.display = 'block';
+            document.getElementById('confidence-val').textContent = data.aiConfidence + '%';
+            setTimeout(() => {
+                document.getElementById('confidence-bar').style.width = data.aiConfidence + '%';
+            }, 100);
+            document.getElementById('analysis-time').textContent = `Analysis completed in ${data.analysisTime.toFixed(3)}s · EcoChain ML Engine v2.4`;
+
+            // Distance badge
+            document.getElementById('distance-badge').textContent = `${data.distanceKm} km`;
+
+            // Route options
+            const routeOpts = document.getElementById('route-options');
+            routeOpts.innerHTML = data.routes.map((r, i) => `
+        <div class="route-option ${r.recommended ? 'recommended' : ''} ${i === 0 ? 'selected' : ''}" id="route-opt-${i}" onclick="selectRoute(${i})">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div class="route-dot" style="background:${r.color};"></div>
+            <div>
+              <div style="font-weight:600; font-size:0.88rem;">${r.label} ${r.recommended ? '<span class="badge badge-green" style="margin-left:6px;">Recommended</span>' : ''}</div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">${r.timeMinutes} min · saves ${r.fuelSaved}L fuel</div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:700; color:${r.color};">${r.co2Reduced} kg CO₂</div>
+            <div style="font-size:0.72rem; color:var(--text-muted);">CO₂ reduced</div>
+          </div>
+        </div>
+      `).join('');
+
+            // Eco metrics
+            const eco = data.optimized;
+            const fuelPct = Math.min(95, (eco.fuelSaved / Math.max(eco.baselineFuel, 0.01)) * 100);
+            const co2Pct = Math.min(95, (eco.co2Reduced / Math.max(eco.baselineCO2, 0.01)) * 100);
+
+            document.getElementById('fuel-val').textContent = eco.fuelSaved + ' L';
+            document.getElementById('co2-val').textContent = eco.co2Reduced + ' kg';
+            document.getElementById('baseline-fuel').textContent = eco.baselineFuel + ' L';
+            document.getElementById('baseline-co2').textContent = eco.baselineCO2 + ' kg';
+            document.getElementById('time-val').textContent = eco.timeMinutes + ' min';
+            document.getElementById('credits-preview').textContent = eco.creditsEarned;
+            document.getElementById('mint-credits-preview').textContent = eco.creditsEarned;
+
+            setTimeout(() => {
+                document.getElementById('fuel-bar').style.width = fuelPct + '%';
+                document.getElementById('co2-bar').style.width = co2Pct + '%';
+            }, 200);
+
+            // Traffic chart
+            if (trafficChart) trafficChart.destroy();
+            const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+            trafficChart = new Chart(document.getElementById('trafficChart'), {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: [{
+                        label: 'Congestion %',
+                        data: data.trafficData,
+                        borderColor: '#ff8c42',
+                        backgroundColor: 'rgba(255,140,66,0.08)',
+                        fill: true, tension: 0.4,
+                        pointRadius: 0,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0c1f14', borderColor: 'rgba(255,140,66,0.3)', borderWidth: 1, titleColor: '#ff8c42', bodyColor: '#e8f5ee', callbacks: { label: ctx => `Congestion: ${ctx.raw}%` } } },
+                    scales: {
+                        x: { grid: { color: 'rgba(0,255,136,0.06)' }, ticks: { color: '#8baa98', maxTicksLimit: 8, font: { size: 10 } } },
+                        y: { grid: { color: 'rgba(0,255,136,0.06)' }, ticks: { color: '#8baa98', font: { size: 10 } }, min: 0, max: 100, beginAtZero: true }
+                    }
+                }
+            });
+
+            // Waypoints
+            const wpEl = document.getElementById('waypoints');
+            wpEl.innerHTML = data.waypoints.map((wp, i) => {
+                const isFirst = i === 0, isLast = i === data.waypoints.length - 1;
+                const congColor = wp.congestion === 'High' ? 'var(--accent-red)' : wp.congestion === 'Medium' ? 'var(--accent-orange)' : 'var(--green-primary)';
+                return `
+          <div class="waypoint-item">
+            <div style="display:flex; flex-direction:column; align-items:center; gap:0;">
+              <div class="waypoint-dot ${isFirst || isLast ? 'filled' : ''}" style="${isFirst || isLast ? '' : 'border-color:var(--text-muted);'}"></div>
+              ${!isLast ? '<div class="waypoint-line"></div>' : ''}
+            </div>
+            <div style="flex:1; padding-bottom:${isLast ? '0' : '8px'};">
+              <span style="font-weight:${isFirst || isLast ? '600' : '400'}; font-size:0.85rem;">${wp.name}</span>
+              <span class="badge" style="margin-left:8px; background:${congColor}22; color:${congColor}; border:1px solid ${congColor}44; font-size:0.65rem;">${wp.congestion}</span>
+            </div>
+          </div>
+        `;
+            }).join('');
+
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('optimize-btn').style.display = 'block';
+        }
+
+        function selectRoute(idx) {
+            document.querySelectorAll('.route-option').forEach((el, i) => {
+                el.classList.toggle('selected', i === idx);
+            });
+        }
+
+        async function mintCredits() {
+            if (!optimizationData) return;
+            const btn = document.getElementById('mint-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Minting on blockchain...';
+
+            try {
+                const eco = optimizationData.optimized;
+                const res = await API.post('/api/blockchain/mint', {
+                    creditsEarned: eco.creditsEarned,
+                    greenBoost: eco.greenBoost,
+                    fuelSaved: eco.fuelSaved,
+                    co2Reduced: eco.co2Reduced,
+                    route: `${optimizationData.start} → ${optimizationData.destination}`
+                });
+
+                document.getElementById('mint-card').style.display = 'none';
+                const successEl = document.getElementById('mint-success');
+                successEl.style.display = 'block';
+                document.getElementById('mint-msg').textContent =
+                    `+${eco.creditsEarned} ECO credits minted. New balance: ${res.newBalance} ECO · Green Score: ${res.newGreenScore}`;
+                document.getElementById('tx-hash-display').textContent = res.transaction.txHash;
+
+                // Update sidebar
+                const u = getUser();
+                setSession(getToken(), { ...u, carbonCredits: res.newBalance });
+                document.getElementById('sidebar-credits').textContent = res.newBalance.toLocaleString();
+
+                showToast(`🎉 ${eco.creditsEarned} ECO credits minted to blockchain!`, 'success', 5000);
+
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerHTML = '⛓️ Mint ECO Credits';
+                showToast('Minting failed: ' + err.message, 'error');
+            }
+        }
+
+        function resetOptimizer() {
+            document.getElementById('start').value = '';
+            document.getElementById('destination').value = '';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('confidence-card').style.display = 'none';
+            optimizationData = null;
+        }
+    </script>
+</body>
+
+</html>

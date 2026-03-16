@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoChain AI – Leaderboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .podium {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 16px;
+            padding: 32px 24px 0;
+            margin-bottom: 32px;
+        }
+
+        .podium-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            max-width: 160px;
+        }
+
+        .podium-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            font-weight: 800;
+            font-family: 'Space Grotesk', sans-serif;
+            border: 3px solid;
+        }
+
+        .podium-1 .podium-avatar {
+            background: rgba(255, 215, 0, 0.15);
+            border-color: #ffd700;
+            color: #ffd700;
+        }
+
+        .podium-2 .podium-avatar {
+            background: rgba(192, 192, 192, 0.15);
+            border-color: #c0c0c0;
+            color: #c0c0c0;
+        }
+
+        .podium-3 .podium-avatar {
+            background: rgba(205, 127, 50, 0.15);
+            border-color: #cd7f32;
+            color: #cd7f32;
+        }
+
+        .podium-block {
+            width: 100%;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            padding-bottom: 14px;
+            gap: 4px;
+        }
+
+        .podium-1 .podium-block {
+            height: 100px;
+            background: linear-gradient(to top, rgba(255, 215, 0, 0.12), transparent);
+            border: 1px solid rgba(255, 215, 0, 0.25);
+        }
+
+        .podium-2 .podium-block {
+            height: 70px;
+            background: linear-gradient(to top, rgba(192, 192, 192, 0.1), transparent);
+            border: 1px solid rgba(192, 192, 192, 0.2);
+        }
+
+        .podium-3 .podium-block {
+            height: 50px;
+            background: linear-gradient(to top, rgba(205, 127, 50, 0.1), transparent);
+            border: 1px solid rgba(205, 127, 50, 0.2);
+        }
+
+        .podium-name {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .podium-credits {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .rank-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.06);
+            transition: background 0.2s;
+        }
+
+        .rank-row:last-child {
+            border-bottom: none;
+        }
+
+        .rank-row:hover {
+            background: var(--bg-glass);
+        }
+
+        .rank-num {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 800;
+            font-size: 1.1rem;
+            width: 32px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .rank-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .rank-info {
+            flex: 1;
+        }
+
+        .rank-name {
+            font-weight: 600;
+            font-size: 0.88rem;
+        }
+
+        .rank-addr {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .rank-credits {
+            font-weight: 800;
+            color: var(--green-primary);
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .score-mini-bar {
+            height: 4px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, var(--green-dark), var(--green-primary));
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">🌿</div>
+                <div class="logo-text">EcoChain AI<span>Sustainable Transport</span></div>
+            </div>
+            <span class="nav-section-label">Main</span>
+            <a href="/dashboard" class="nav-item"><span class="icon">📊</span> Dashboard</a>
+            <a href="/saferoute" class="nav-item"><span class="icon">🗺️</span> SafeRoute AI</a>
+            <a href="/optimizer" class="nav-item"><span class="icon">🤖</span> AI Optimizer</a>
+            <a href="/wallet" class="nav-item"><span class="icon">⛓️</span> Blockchain Wallet</a>
+            <a href="/leaderboard" class="nav-item active"><span class="icon">🏆</span> Leaderboard</a>
+            <div class="sidebar-footer">
+                <div class="user-pill">
+                    <div class="user-avatar" id="sidebar-avatar">U</div>
+                    <div class="user-pill-info">
+                        <div class="user-pill-name" id="sidebar-user-name">Loading...</div>
+                        <div class="user-pill-role" id="sidebar-user-role">🌿 Eco User</div>
+                    </div>
+                    <button onclick="logout()" class="copy-btn" title="Logout">🚪</button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">🏆 Eco Leaderboard</h1>
+                    <p class="page-subtitle">Top eco warriors ranked by carbon credits earned</p>
+                </div>
+                <a href="/optimizer" class="btn btn-primary">Earn Credits →</a>
+            </div>
+
+            <div class="card" style="padding:0; overflow:hidden;">
+                <!-- Podium -->
+                <div id="podium-section" class="podium" style="display:none;"></div>
+
+                <!-- Full List -->
+                <div id="leaderboard-list">
+                    <div class="text-center text-muted" style="padding:40px; font-size:0.85rem;">Loading leaderboard...
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info mt-2">
+                ℹ️ Rankings update instantly after each route optimization and credit mint. Earn more ECO credits by
+                choosing eco-friendly routes!
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        requireAuth();
+        populateSidebar();
+
+        const currentUser = getUser();
+
+        async function loadLeaderboard() {
+            try {
+                const res = await API.get('/api/blockchain/leaderboard');
+                const board = res.leaderboard;
+
+                if (board.length === 0) {
+                    document.getElementById('leaderboard-list').innerHTML =
+                        '<div class="empty-state"><span class="big-icon">🌱</span>No users yet. Be the first to optimize a route!</div>';
+                    return;
+                }
+
+                // Podium (top 3)
+                const top3 = board.slice(0, Math.min(3, board.length));
+                const podiumOrder = top3.length >= 3 ? [top3[1], top3[0], top3[2]] : top3; // 2nd, 1st, 3rd
+                const podiumSection = document.getElementById('podium-section');
+                const podiumClasses = top3.length >= 3 ? ['podium-2', 'podium-1', 'podium-3'] : ['podium-1'];
+                podiumSection.innerHTML = podiumOrder.map((u, i) => `
+          <div class="podium-item ${podiumClasses[i]}">
+            <div style="font-size:1.5rem;">${u.badge}</div>
+            <div class="podium-avatar">${u.name.charAt(0).toUpperCase()}</div>
+            <div class="podium-name">${u.name}</div>
+            <div class="podium-credits">${u.carbonCredits} ECO</div>
+            <div class="podium-block">
+              <div style="font-size:0.7rem; color:var(--text-muted);">Rank #${u.rank}</div>
+            </div>
+          </div>
+        `).join('');
+                podiumSection.style.display = 'flex';
+
+                // Full list
+                const maxCredits = board[0]?.carbonCredits || 1;
+                document.getElementById('leaderboard-list').innerHTML = board.map(u => {
+                    const isMe = u.walletAddress.replace('...', '').length < 12 ? false :
+                        currentUser?.walletAddress?.startsWith(u.walletAddress.slice(0, 8));
+                    const barWidth = Math.max(4, (u.carbonCredits / maxCredits) * 100);
+                    return `
+            <div class="rank-row" style="${isMe ? 'background:rgba(0,255,136,0.04); border-left:3px solid var(--green-primary);' : ''}">
+              <div class="rank-num" style="${u.rank <= 3 ? 'color:' + [, '#ffd700', '#c0c0c0', '#cd7f32'][u.rank] : ''}">${u.badge}</div>
+              <div class="rank-avatar" style="color:var(--green-primary);">${u.name.charAt(0).toUpperCase()}</div>
+              <div class="rank-info">
+                <div class="rank-name">${u.name} ${isMe ? '<span class="badge badge-green" style="font-size:0.6rem; padding:1px 7px;">YOU</span>' : ''}</div>
+                <div class="rank-addr">${u.walletAddress}</div>
+                <div class="score-mini-bar" style="width:${barWidth}%;"></div>
+              </div>
+              <div style="text-align:right;">
+                <div class="rank-credits">${u.carbonCredits.toLocaleString()} ECO</div>
+                <div style="font-size:0.72rem; color:var(--text-muted);">${u.totalRoutes} routes · ${u.co2Reduced.toFixed(1)}kg CO₂</div>
+                <div style="font-size:0.7rem; color:var(--accent-orange);">⭐ ${u.greenScore} pts</div>
+              </div>
+            </div>
+          `;
+                }).join('');
+
+            } catch (err) {
+                showToast('Failed to load leaderboard: ' + err.message, 'error');
+            }
+        }
+
+        loadLeaderboard();
+        // Refresh every 30s for live feel
+        setInterval(loadLeaderboard, 30000);
+    </script>
+</body>
+
+</html>

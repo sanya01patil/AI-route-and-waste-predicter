@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoChain AI – Login</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        body {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 460px;
+            animation: fadeIn 0.6s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .auth-logo-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #00ff88, #00c466);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin: 0 auto 14px;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .auth-logo h1 {
+            font-size: 1.6rem;
+            margin-bottom: 4px;
+        }
+
+        .auth-logo p {
+            color: #8baa98;
+            font-size: 0.85rem;
+        }
+
+        .auth-card {
+            background: #0c1f14;
+            border: 1px solid rgba(0, 255, 136, 0.12);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(0, 255, 136, 0.08);
+        }
+
+        .auth-tabs {
+            display: flex;
+            background: rgba(0, 255, 136, 0.04);
+            border: 1px solid rgba(0, 255, 136, 0.12);
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 28px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 9px;
+            border: none;
+            background: none;
+            color: #8baa98;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 7px;
+            transition: all 0.25s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .auth-tab.active {
+            background: linear-gradient(135deg, #00ff88, #00c466);
+            color: #000;
+        }
+
+        .form-panel {
+            display: none;
+        }
+
+        .form-panel.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .input-icon-wrap {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #4a7060;
+            font-size: 0.9rem;
+        }
+
+        .input-icon-wrap .form-control {
+            padding-left: 38px;
+        }
+
+        .auth-footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #4a7060;
+        }
+
+        .auth-footer a {
+            color: #00ff88;
+            text-decoration: none;
+        }
+
+        .demo-creds {
+            background: rgba(0, 255, 136, 0.04);
+            border: 1px solid rgba(0, 255, 136, 0.1);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 20px;
+            font-size: 0.78rem;
+            color: #8baa98;
+        }
+
+        .demo-creds strong {
+            color: #00ff88;
+        }
+
+        .error-box {
+            background: rgba(255, 79, 79, 0.08);
+            border: 1px solid rgba(255, 79, 79, 0.3);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.82rem;
+            color: #ff4f4f;
+            margin-bottom: 16px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="particles-canvas"></canvas>
+    <div class="auth-container">
+        <div class="auth-logo">
+            <div class="auth-logo-icon">🌿</div>
+            <h1 class="gradient-text">EcoChain AI</h1>
+            <p>Sustainable Transport Optimization Platform</p>
+        </div>
+
+        <div class="auth-card">
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Sign In</button>
+                <button class="auth-tab" id="tab-signup" onclick="switchTab('signup')">Create Account</button>
+            </div>
+
+            <!-- Login Form -->
+            <div class="form-panel active" id="panel-login">
+                <div class="demo-creds">
+                    🔐 <strong>Demo Admin:</strong> admin@ecochain.ai / Admin@123
+                </div>
+                <div class="error-box" id="login-error"></div>
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <div class="input-icon-wrap">
+                        <span class="input-icon">📧</span>
+                        <input type="email" id="login-email" class="form-control" placeholder="you@example.com">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <div class="input-icon-wrap">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="login-password" class="form-control" placeholder="••••••••">
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block btn-lg" id="login-btn" onclick="doLogin()">
+                    Sign In →
+                </button>
+            </div>
+
+            <!-- Signup Form -->
+            <div class="form-panel" id="panel-signup">
+                <div class="error-box" id="signup-error"></div>
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <div class="input-icon-wrap">
+                        <span class="input-icon">👤</span>
+                        <input type="text" id="signup-name" class="form-control" placeholder="Your name">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <div class="input-icon-wrap">
+                        <span class="input-icon">📧</span>
+                        <input type="email" id="signup-email" class="form-control" placeholder="you@example.com">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <div class="input-icon-wrap">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="signup-password" class="form-control"
+                            placeholder="Min. 6 characters">
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block btn-lg" id="signup-btn" onclick="doSignup()">
+                    Create Account 🌿
+                </button>
+            </div>
+
+            <div class="auth-footer">
+                By continuing, you agree to EcoChain AI's <a href="#">Terms of Service</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        initParticles('particles-canvas');
+
+        // Redirect if already logged in
+        if (getToken()) window.location.href = '/dashboard';
+
+        function switchTab(tab) {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            document.getElementById('panel-' + tab).classList.add('active');
+        }
+
+        function showError(id, msg) {
+            const el = document.getElementById(id);
+            el.textContent = '⚠️ ' + msg;
+            el.style.display = 'block';
+        }
+        function hideError(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        async function doLogin() {
+            hideError('login-error');
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            const btn = document.getElementById('login-btn');
+
+            if (!email || !password) return showError('login-error', 'Please fill all fields.');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Signing in...';
+
+            try {
+                const res = await API.post('/api/auth/login', { email, password });
+                setSession(res.token, res.user);
+                showToast('Welcome back, ' + res.user.name + '! 🌿', 'success');
+                setTimeout(() => {
+                    window.location.href = res.user.role === 'admin' ? '/admin' : '/dashboard';
+                }, 600);
+            } catch (err) {
+                showError('login-error', err.message);
+                btn.disabled = false;
+                btn.innerHTML = 'Sign In →';
+            }
+        }
+
+        async function doSignup() {
+            hideError('signup-error');
+            const name = document.getElementById('signup-name').value.trim();
+            const email = document.getElementById('signup-email').value.trim();
+            const password = document.getElementById('signup-password').value;
+            const btn = document.getElementById('signup-btn');
+
+            if (!name || !email || !password) return showError('signup-error', 'Please fill all fields.');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Creating account...';
+
+            try {
+                const res = await API.post('/api/auth/signup', { name, email, password });
+                setSession(res.token, res.user);
+                showToast('Welcome to EcoChain AI, ' + res.user.name + '! 🌿', 'success');
+                setTimeout(() => window.location.href = '/dashboard', 600);
+            } catch (err) {
+                showError('signup-error', err.message);
+                btn.disabled = false;
+                btn.innerHTML = 'Create Account 🌿';
+            }
+        }
+
+        // Enter key support
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                if (document.getElementById('panel-login').classList.contains('active')) doLogin();
+                else doSignup();
+            }
+        });
+    </script>
+</body>
+
+</html>

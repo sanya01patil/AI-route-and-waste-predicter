@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoChain AI – Admin Panel</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .admin-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .admin-stat {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 18px;
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .admin-stat:hover {
+            border-color: var(--border-hover);
+        }
+
+        .admin-stat-val {
+            font-size: 1.8rem;
+            font-weight: 800;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .admin-stat-lbl {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .admin-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .user-table-row:hover {
+            background: var(--bg-glass);
+        }
+
+        .role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            font-weight: 600;
+        }
+
+        .role-admin {
+            background: rgba(155, 89, 245, 0.15);
+            color: var(--accent-purple);
+            border: 1px solid rgba(155, 89, 245, 0.3);
+        }
+
+        .role-user {
+            background: rgba(0, 255, 136, 0.10);
+            color: var(--green-primary);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">⚡</div>
+                <div class="logo-text">EcoChain AI<span>Admin Panel</span></div>
+            </div>
+            <span class="nav-section-label">Admin</span>
+            <a href="/admin" class="nav-item active"><span class="icon">⚙️</span> Overview</a>
+            <a href="/leaderboard" class="nav-item"><span class="icon">🏆</span> Leaderboard</a>
+            <span class="nav-section-label">User View</span>
+            <a href="/dashboard" class="nav-item"><span class="icon">📊</span> Dashboard</a>
+            <a href="/saferoute" class="nav-item"><span class="icon">🗺️</span> SafeRoute AI</a>
+            <a href="/optimizer" class="nav-item"><span class="icon">🤖</span> AI Optimizer</a>
+            <div class="sidebar-footer">
+                <div class="user-pill">
+                    <div class="user-avatar" style="background:linear-gradient(135deg,#9b59f5,#7c3aed);"
+                        id="sidebar-avatar">A</div>
+                    <div class="user-pill-info">
+                        <div class="user-pill-name" id="sidebar-user-name">Admin</div>
+                        <div class="user-pill-role" id="sidebar-user-role">⚡ Admin</div>
+                    </div>
+                    <button onclick="logout()" class="copy-btn" title="Logout">🚪</button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">⚙️ Admin Panel</h1>
+                    <p class="page-subtitle">Platform overview · <span id="live-time" class="mono"
+                            style="font-size:0.8rem;"></span></p>
+                </div>
+                <span class="badge badge-purple">⚡ Admin Access</span>
+            </div>
+
+            <!-- Overview Stats -->
+            <div class="admin-stats" id="admin-stats">
+                <div class="admin-stat">
+                    <div class="admin-stat-val text-green" id="total-users">–</div>
+                    <div class="admin-stat-lbl">Total Users</div>
+                </div>
+                <div class="admin-stat">
+                    <div class="admin-stat-val" style="color:var(--accent-orange);" id="total-credits">–</div>
+                    <div class="admin-stat-lbl">Credits Issued (ECO)</div>
+                </div>
+                <div class="admin-stat">
+                    <div class="admin-stat-val text-blue" id="total-co2">–</div>
+                    <div class="admin-stat-lbl">CO₂ Reduced (kg)</div>
+                </div>
+                <div class="admin-stat">
+                    <div class="admin-stat-val" style="color:var(--accent-purple);" id="total-routes">–</div>
+                    <div class="admin-stat-lbl">Routes Optimized</div>
+                </div>
+                <div class="admin-stat">
+                    <div class="admin-stat-val text-green" id="total-fuel">–</div>
+                    <div class="admin-stat-lbl">Fuel Saved (L)</div>
+                </div>
+                <div class="admin-stat">
+                    <div class="admin-stat-val" style="color:var(--accent-red);" id="block-height">–</div>
+                    <div class="admin-stat-lbl">Block Height</div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="admin-grid mb-3">
+                <div class="card">
+                    <div class="section-header mb-2">
+                        <span class="section-title">📈 Daily Credits (7 Days)</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="dailyCreditsChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="section-header mb-2">
+                        <span class="section-title">🌍 Daily CO₂ Reduction</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="dailyCO2Chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Transactions -->
+            <div class="card mb-3">
+                <div class="section-header mb-2">
+                    <span class="section-title">⛓️ Recent Platform Transactions</span>
+                    <span class="immutable-badge">🔒 Immutable Ledger</span>
+                </div>
+                <div class="table-wrap" id="recent-wrap">
+                    <div class="text-center text-muted" style="padding:20px;">Loading...</div>
+                </div>
+            </div>
+
+            <!-- User Table -->
+            <div class="card">
+                <div class="section-header mb-2">
+                    <span class="section-title">👥 All Users</span>
+                    <span class="badge badge-green" id="user-count-badge">0 users</span>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Credits</th>
+                                <th>Green Score</th>
+                                <th>Routes</th>
+                                <th>CO₂ Saved</th>
+                                <th>Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody">
+                            <tr>
+                                <td colspan="8" class="text-center text-muted" style="padding:24px;">Loading users...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        requireAuth();
+        requireAdmin();
+        populateSidebar();
+
+        // Live clock
+        function updateClock() {
+            document.getElementById('live-time').textContent = new Date().toLocaleTimeString();
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        const CHART_OPTS = {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0c1f14', borderColor: 'rgba(0,255,136,0.2)', borderWidth: 1, titleColor: '#00ff88', bodyColor: '#e8f5ee' } },
+            scales: {
+                x: { grid: { color: 'rgba(0,255,136,0.06)' }, ticks: { color: '#8baa98', font: { size: 11 } } },
+                y: { grid: { color: 'rgba(0,255,136,0.06)' }, ticks: { color: '#8baa98', font: { size: 11 } }, beginAtZero: true }
+            }
+        };
+
+        async function loadAdmin() {
+            try {
+                const res = await API.get('/api/dashboard/admin');
+                const { overview, users, dailyStats, recentTransactions } = res;
+
+                // Stats
+                animateNumber(document.getElementById('total-users'), overview.totalUsers);
+                animateNumber(document.getElementById('total-credits'), overview.totalCreditsIssued);
+                animateNumber(document.getElementById('total-co2'), overview.totalCO2Reduced, 1200, 2);
+                animateNumber(document.getElementById('total-routes'), overview.totalRoutes);
+                animateNumber(document.getElementById('total-fuel'), overview.totalFuelSaved, 1200, 2);
+                animateNumber(document.getElementById('block-height'), overview.blockHeight);
+
+                // Charts
+                const labels = dailyStats.map(d => d.day);
+                new Chart(document.getElementById('dailyCreditsChart'), {
+                    type: 'bar',
+                    data: { labels, datasets: [{ data: dailyStats.map(d => d.credits), backgroundColor: 'rgba(0,255,136,0.2)', borderColor: '#00ff88', borderWidth: 2, borderRadius: 5 }] },
+                    options: CHART_OPTS
+                });
+                new Chart(document.getElementById('dailyCO2Chart'), {
+                    type: 'line',
+                    data: { labels, datasets: [{ data: dailyStats.map(d => d.co2), borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.08)', fill: true, tension: 0.4, pointBackgroundColor: '#00d4ff', pointRadius: 4 }] },
+                    options: CHART_OPTS
+                });
+
+                // Recent transactions
+                const recentWrap = document.getElementById('recent-wrap');
+                if (recentTransactions.length === 0) {
+                    recentWrap.innerHTML = '<div class="text-center text-muted" style="padding:24px; font-size:0.85rem;">No transactions yet.</div>';
+                } else {
+                    recentWrap.innerHTML = `<table>
+            <thead><tr><th>User</th><th>TX Hash</th><th>Route</th><th>Amount</th><th>CO₂</th><th>Time</th></tr></thead>
+            <tbody>${recentTransactions.map(tx => `
+              <tr>
+                <td style="font-size:0.82rem;">${tx.userName}</td>
+                <td class="mono" style="font-size:0.68rem; color:var(--text-muted);">${tx.txHash.slice(0, 14)}...</td>
+                <td style="font-size:0.78rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${tx.route}</td>
+                <td style="color:var(--accent-orange); font-weight:700;">+${tx.amount} ECO</td>
+                <td class="text-green">${tx.co2Reduced} kg</td>
+                <td style="color:var(--text-muted); font-size:0.75rem;">${formatDate(tx.timestamp)}</td>
+              </tr>
+            `).join('')}</tbody>
+          </table>`;
+                }
+
+                // Users table
+                document.getElementById('user-count-badge').textContent = `${overview.totalUsers} users`;
+                document.getElementById('users-tbody').innerHTML = users.map(u => `
+          <tr class="user-table-row">
+            <td>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div style="width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,var(--green-dark),var(--green-mid)); display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700; color:#000; flex-shrink:0;">${u.name.charAt(0).toUpperCase()}</div>
+                <span style="font-size:0.85rem; font-weight:500;">${u.name}</span>
+              </div>
+            </td>
+            <td style="font-size:0.78rem; color:var(--text-secondary);">${u.email}</td>
+            <td><span class="role-badge ${u.role === 'admin' ? 'role-admin' : 'role-user'}">${u.role === 'admin' ? '⚡' : '🌿'} ${u.role}</span></td>
+            <td style="color:var(--green-primary); font-weight:700;">${u.carbonCredits} ECO</td>
+            <td style="color:var(--accent-orange);">${u.greenScore} pts</td>
+            <td>${u.totalRoutes}</td>
+            <td>${u.totalCO2Reduced.toFixed(2)} kg</td>
+            <td style="font-size:0.75rem; color:var(--text-muted);">${new Date(u.joinedAt).toLocaleDateString()}</td>
+          </tr>
+        `).join('');
+
+            } catch (err) {
+                showToast('Failed to load admin data: ' + err.message, 'error');
+            }
+        }
+
+        loadAdmin();
+        // Auto-refresh every 15s
+        setInterval(loadAdmin, 15000);
+    </script>
+</body>
+
+</html>

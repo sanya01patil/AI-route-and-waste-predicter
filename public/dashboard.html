@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoChain AI – Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .green-score-section {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 20px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-card);
+        }
+
+        .tier-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 999px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .impact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 24px;
+        }
+
+        @media (max-width: 800px) {
+            .impact-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .recent-tx {
+            margin-top: 24px;
+        }
+
+        .tx-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.06);
+        }
+
+        .tx-row:last-child {
+            border-bottom: none;
+        }
+
+        .tx-hash {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        .tx-amount {
+            color: var(--green-primary);
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">🌿</div>
+                <div class="logo-text">EcoChain AI<span>Sustainable Transport</span></div>
+            </div>
+            <span class="nav-section-label">Main</span>
+            <a href="/dashboard" class="nav-item"><span class="icon">📊</span> Dashboard</a>
+            <a href="/saferoute" class="nav-item"><span class="icon">🗺️</span> SafeRoute AI</a>
+            <a href="/optimizer" class="nav-item"><span class="icon">🤖</span> AI Optimizer</a>
+            <a href="/wallet" class="nav-item"><span class="icon">⛓️</span> Blockchain Wallet</a>
+            <a href="/leaderboard" class="nav-item"><span class="icon">🏆</span> Leaderboard</a>
+            <span class="nav-section-label">Account</span>
+            <div style="padding: 8px 12px; font-size: 0.8rem; color: var(--text-muted);">
+                Credits: <span id="sidebar-credits" class="text-green fw-bold">0</span> ECO
+            </div>
+            <div class="sidebar-footer">
+                <div class="user-pill">
+                    <div class="user-avatar" id="sidebar-avatar">U</div>
+                    <div class="user-pill-info">
+                        <div class="user-pill-name" id="sidebar-user-name">Loading...</div>
+                        <div class="user-pill-role" id="sidebar-user-role">🌿 Eco User</div>
+                    </div>
+                    <button onclick="logout()" class="copy-btn" title="Logout">🚪</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main class="main-content">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Dashboard <span style="font-size:0.6em; color:var(--text-muted);"
+                            id="greeting"></span></h1>
+                    <p class="page-subtitle">Your environmental impact at a glance</p>
+                </div>
+                <a href="/optimizer" class="btn btn-primary"><span>🤖</span> Optimize Route</a>
+            </div>
+
+            <!-- Green Score Banner -->
+            <div class="green-score-section" id="score-banner">
+                <div class="score-ring">
+                    <svg width="100" height="100" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(0,255,136,0.1)" stroke-width="8" />
+                        <circle id="score-arc" cx="50" cy="50" r="42" fill="none" stroke="#00ff88" stroke-width="8"
+                            stroke-linecap="round" stroke-dasharray="0 264"
+                            style="transition:stroke-dasharray 1.2s ease" />
+                    </svg>
+                    <div class="score-ring-value" id="score-val">0</div>
+                </div>
+                <div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Green Score</div>
+                    <div style="font-size:1.5rem; font-weight:800; font-family:'Space Grotesk',sans-serif;"
+                        id="score-display">0</div>
+                    <span class="tier-badge" id="tier-badge"
+                        style="background:rgba(205,127,50,0.15); color:#cd7f32; border:1px solid rgba(205,127,50,0.3);">Bronze</span>
+                    <div style="font-size:0.78rem; color:var(--text-secondary); margin-top:8px;" id="score-note">
+                        Complete eco routes to level up!</div>
+                </div>
+                <div style="margin-left:auto; text-align:right;">
+                    <div style="font-size:0.75rem; color:var(--text-muted);">Carbon Credits</div>
+                    <div style="font-size:2rem; font-weight:800; color:var(--green-primary); font-family:'Space Grotesk',sans-serif;"
+                        id="credit-balance">0</div>
+                    <div style="font-size:0.72rem; color:var(--text-muted);">ECO tokens on-chain</div>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card green">
+                    <span class="stat-icon">🛣️</span>
+                    <div class="stat-value" id="stat-routes">0</div>
+                    <div class="stat-label">Routes Optimized</div>
+                    <div class="stat-sub">Total trips taken</div>
+                </div>
+                <div class="stat-card blue">
+                    <span class="stat-icon">⛽</span>
+                    <div class="stat-value" id="stat-fuel">0</div>
+                    <div class="stat-label">Fuel Saved (L)</div>
+                    <div class="stat-sub">Litres not burned</div>
+                </div>
+                <div class="stat-card purple">
+                    <span class="stat-icon">🌍</span>
+                    <div class="stat-value" id="stat-co2">0</div>
+                    <div class="stat-label">CO₂ Reduced (kg)</div>
+                    <div class="stat-sub">Emissions avoided</div>
+                </div>
+                <div class="stat-card orange">
+                    <span class="stat-icon">🪙</span>
+                    <div class="stat-value" id="stat-credits">0</div>
+                    <div class="stat-label">Carbon Credits</div>
+                    <div class="stat-sub">ECO tokens earned</div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="impact-grid">
+                <div class="card">
+                    <div class="section-header">
+                        <span class="section-title">📈 Weekly Credits Earned</span>
+                        <span class="badge badge-green">7 Days</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="creditsChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="section-header">
+                        <span class="section-title">💨 CO₂ Reduction Trend</span>
+                        <span class="badge badge-blue">7 Days</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="co2Chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Transactions -->
+            <div class="recent-tx card mt-3">
+                <div class="section-header mb-2">
+                    <span class="section-title">⛓️ Recent Blockchain Activity</span>
+                    <span class="immutable-badge">🔒 Immutable</span>
+                </div>
+                <div id="tx-list">
+                    <div class="text-muted text-sm text-center" style="padding:20px">No transactions yet. Optimize a
+                        route to earn credits!</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        requireAuth();
+        populateSidebar();
+
+        // Greeting
+        const hr = new Date().getHours();
+        document.getElementById('greeting').textContent =
+            hr < 12 ? '☀️ Good Morning' : hr < 17 ? '🌤️ Good Afternoon' : '🌙 Good Evening';
+
+        const CHART_DEFAULTS = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0c1f14', borderColor: 'rgba(0,255,136,0.3)', borderWidth: 1, titleColor: '#00ff88', bodyColor: '#e8f5ee' } },
+            scales: {
+                x: { grid: { color: 'rgba(0,255,136,0.06)' }, ticks: { color: '#8baa98', font: { size: 11 } } },
+                y: { grid: { color: 'rgba(0,255,136,0.06)' }, ticks: { color: '#8baa98', font: { size: 11 } }, beginAtZero: true }
+            }
+        };
+
+        let creditsChart, co2Chart;
+
+        async function loadDashboard() {
+            try {
+                const res = await API.get('/api/dashboard/stats');
+                const { user, weeklyData, recentTransactions } = res;
+
+                // Update sidebar credits
+                localStorage.setItem('ecochain_user', JSON.stringify({ ...getUser(), carbonCredits: user.carbonCredits }));
+                document.getElementById('sidebar-credits').textContent = user.carbonCredits.toLocaleString();
+
+                // Stats
+                animateNumber(document.getElementById('stat-routes'), user.totalRoutes);
+                animateNumber(document.getElementById('stat-fuel'), user.totalFuelSaved, 1200, 2);
+                animateNumber(document.getElementById('stat-co2'), user.totalCO2Reduced, 1200, 2);
+                animateNumber(document.getElementById('stat-credits'), user.carbonCredits);
+
+                // Green score ring
+                const score = user.greenScore;
+                document.getElementById('score-val').textContent = score;
+                document.getElementById('score-display').textContent = score;
+                const circ = 2 * Math.PI * 42;
+                const frac = Math.min(score / 1000, 1);
+                setTimeout(() => {
+                    document.getElementById('score-arc').style.strokeDasharray = `${frac * circ} ${circ}`;
+                }, 100);
+
+                // Tier badge
+                const tierEl = document.getElementById('tier-badge');
+                tierEl.textContent = user.tier;
+                tierEl.style.background = user.tierColor + '22';
+                tierEl.style.color = user.tierColor;
+                tierEl.style.border = `1px solid ${user.tierColor}44`;
+
+                // Credit balance (big number)
+                animateNumber(document.getElementById('credit-balance'), user.carbonCredits);
+
+                const noteEl = document.getElementById('score-note');
+                if (score >= 500) noteEl.textContent = '🏆 Platinum Eco Champion!';
+                else if (score >= 200) noteEl.textContent = '🥇 Gold tier – keep going!';
+                else if (score >= 100) noteEl.textContent = '🥈 Silver tier – great work!';
+                else noteEl.textContent = 'Complete eco routes to level up!';
+
+                // Charts
+                const labels = weeklyData.map(d => d.day);
+                const creditsData = weeklyData.map(d => d.credits);
+                const co2Data = weeklyData.map(d => d.co2);
+
+                creditsChart = new Chart(document.getElementById('creditsChart'), {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data: creditsData,
+                            backgroundColor: 'rgba(0,255,136,0.2)',
+                            borderColor: '#00ff88',
+                            borderWidth: 2,
+                            borderRadius: 6,
+                        }]
+                    },
+                    options: { ...CHART_DEFAULTS }
+                });
+
+                co2Chart = new Chart(document.getElementById('co2Chart'), {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data: co2Data,
+                            borderColor: '#00d4ff',
+                            backgroundColor: 'rgba(0,212,255,0.08)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#00d4ff',
+                            pointRadius: 4,
+                        }]
+                    },
+                    options: { ...CHART_DEFAULTS }
+                });
+
+                // Recent transactions
+                const txList = document.getElementById('tx-list');
+                if (recentTransactions.length === 0) {
+                    txList.innerHTML = '<div class="text-muted text-sm text-center" style="padding:20px">No transactions yet. Optimize a route to earn credits!</div>';
+                } else {
+                    txList.innerHTML = recentTransactions.map(tx => `
+            <div class="tx-row">
+              <div>
+                <div class="tx-hash">${tx.txHash.slice(0, 18)}...</div>
+                <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:2px;">${tx.route} · ${formatDate(tx.timestamp)}</div>
+              </div>
+              <div class="text-right">
+                <div class="tx-amount">+${tx.amount} ECO</div>
+                <div class="badge badge-green" style="margin-top:4px;">✓ CONFIRMED</div>
+              </div>
+            </div>
+          `).join('');
+                }
+
+            } catch (err) {
+                showToast('Failed to load dashboard: ' + err.message, 'error');
+            }
+        }
+
+        loadDashboard();
+    </script>
+</body>
+
+</html>
