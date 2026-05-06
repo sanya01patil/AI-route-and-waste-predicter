@@ -362,6 +362,18 @@
         requireAuth();
         populateSidebar();
 
+        // Proactive tip listener
+        const checkInputs = () => {
+            const s = document.getElementById('start').value;
+            const d = document.getElementById('destination').value;
+            if (s && d && document.getElementById('results').style.display === 'none') {
+                document.getElementById('ai-tip-container').style.display = 'block';
+                document.getElementById('ai-tip-text').textContent = `🧠 AI Insight: Ready to analyze the best path to ${d}...`;
+            }
+        };
+        document.getElementById('start').addEventListener('input', checkInputs);
+        document.getElementById('destination').addEventListener('input', checkInputs);
+
         let optimizationData = null;
         let trafficChart = null;
 
@@ -422,6 +434,7 @@
                 document.getElementById('confidence-bar').style.width = data.aiConfidence + '%';
             }, 100);
             document.getElementById('analysis-time').textContent = `Analysis completed in ${data.analysisTime.toFixed(3)}s · EcoChain ML Engine v2.4`;
+
 
             // Show AI Tip
             if (data.aiTip) {
