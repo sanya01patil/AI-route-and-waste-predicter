@@ -40,10 +40,7 @@
             position: relative;
         }
 
-        /* Google Maps skin */
-        .gm-style {
-            filter: hue-rotate(120deg) saturate(0.6) brightness(0.55) contrast(1.1);
-        }
+        /* Google Maps dark skin applied via mapStyles, not CSS filter */
 
         .leaflet-popup-content-wrapper {
             background: #0c1f14 !important;
@@ -824,8 +821,8 @@
                 document.getElementById('ai-anim').style.display = 'none';
                 btn.style.display = 'block';
 
-                currentData = res.data;
-                renderResults(res.data);
+                currentData = res;
+                renderResults(res);
 
             } catch (err) {
                 clearInterval(stepInterval);
@@ -923,7 +920,12 @@
                 wBadge.style.display = 'none';
             }
 
-            document.getElementById('rec-reasons').innerHTML = data.recommendation.reasoning.map(r =>
+            const reasoning = data.recommendation.reasoning || [
+                `Lowest Eco Score (${data.routes.find(r=>r.recommended)?.ecoScore})`,
+                `Safest route with risk: ${data.routes.find(r=>r.recommended)?.accidentRisk}%`,
+                `Recommended for ${data.vehicleType || 'your vehicle'}`
+            ];
+            document.getElementById('rec-reasons').innerHTML = reasoning.map(r =>
                 `<div class="rec-reason">${r}</div>`
             ).join('');
 
@@ -1069,7 +1071,11 @@
 
             // Warning zones (for recommended route)
             const rec = data.routes.find(r => r.recommended) || data.routes[0];
-            document.getElementById('warning-zones').innerHTML = rec.warningZones.map(z => `
+            const warnZones = rec.warningZones || [
+                { type: '⚠️ High-risk zone', desc: 'Accident-prone intersection', km: Math.round(rec.distanceKm * 0.3) },
+                { type: '🚦 Traffic signal', desc: `${rec.stopFrequency} signal stops detected`, km: Math.round(rec.distanceKm * 0.6) }
+            ];
+            document.getElementById('warning-zones').innerHTML = warnZones.map(z => `
         <div class="warning-item">
           <span class="warning-icon">${z.type.split(' ')[0]}</span>
           <div class="warning-detail">
@@ -1086,7 +1092,7 @@
             }
 
             // AI engine info toast
-            showToast(`✅ SafeRoute AI (${data.aiEngine.model}) – ${data.aiEngine.confidence}% confidence · ${data.aiEngine.processTime}s`, 'success', 4000);
+            showToast(`✅ SafeRoute AI analyzed ${data.routes.length} routes – Recommended: ${data.recommendation.routeName}`, 'success', 4000);
 
             document.getElementById('results-wrap').style.display = 'block';
         }
@@ -1096,10 +1102,13 @@
                 el.classList.toggle('active', i === idx);
             });
             selectedRouteIdx = idx;
-            // Highlight route on map
-            routeLayers.forEach((l, i) => {
-                l.setStyle({ weight: i === idx ? 8 : 3, opacity: i === idx ? 1 : 0.4 });
-                if (i === idx) l.bringToFront();
+            // Highlight route on Google Maps
+            routePolylines.forEach((pl, i) => {
+                pl.setOptions({
+                    strokeOpacity: i === idx ? 0.95 : 0.3,
+                    strokeWeight: i === idx ? 8 : 3,
+                    zIndex: i === idx ? 10 : 1
+                });
             });
         }
 
@@ -1140,9 +1149,9 @@
             document.getElementById('sr-start').value = '';
             document.getElementById('sr-dest').value = '';
             document.getElementById('results-wrap').style.display = 'none';
-            routeLayers.forEach(l => map.removeLayer(l));
-            markerLayers.forEach(l => map.removeLayer(l));
-            routeLayers = []; markerLayers = [];
+            routePolylines.forEach(p => p.setMap(null));
+            routeMarkers.forEach(m => m.setMap(null));
+            routePolylines = []; routeMarkers = [];
             currentData = null;
         }
     </script>

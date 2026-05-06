@@ -115,7 +115,15 @@ async def analyze_routes(req: AnalyzeRequest, current_user: dict = Depends(get_c
         
     return {
         "start": req.start, "destination": req.destination, "routes": routes, "mapData": map_data, "weather": weather,
-        "recommendation": {"routeId": best_route["id"], "routeName": best_route["name"]}
+        "recommendation": {
+            "routeId": best_route["id"],
+            "routeName": best_route["name"],
+            "reasoning": [
+                f"Lowest Eco Score ({best_route['ecoScore']})",
+                f"Minimal signal stops ({best_route['stopFrequency']})",
+                f"Avoids high-risk accident zones (Risk: {best_route['accidentRisk']}%)"
+            ]
+        }
     }
 
 @router.get("/conditions")
