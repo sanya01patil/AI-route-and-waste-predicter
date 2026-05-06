@@ -23,11 +23,21 @@ async def optimize_route(req: OptimizeRequest, current_user: dict = Depends(get_
         {"label": "Scenic Bypass", "timeMinutes": int(dist_km * 3.2), "fuelSaved": 0.0, "co2Reduced": 0.0, "color": "#9b59f5", "recommended": False}
     ]
     
+    # Generate a conversational tip
+    tips = [
+        f"AI Suggestion: For your {req.vehicleType}, the Eco Express is best to avoid {req.destination} morning congestion.",
+        f"Pro Tip: Don't go through the bypass today, heavy construction detected near {req.destination}.",
+        f"Eco Choice: Direct Path is 5 mins faster, but Eco Express saves {round(dist_km * 0.12, 1)}L of fuel.",
+        f"Safety Alert: Poor road conditions on the bypass. Stick to the Main Avenue."
+    ]
+    ai_tip = random.choice(tips)
+
     return {
         "status": "success",
         "data": {
             "start": req.start, "destination": req.destination, "distanceKm": round(dist_km, 1), "aiConfidence": 94.2,
             "analysisTime": time.time() - start_time, "trafficData": traffic_data, "routes": routes,
+            "aiTip": ai_tip,
             "waypoints": [{"name": req.start, "congestion": "Low"}, {"name": "Intersection B-42", "congestion": "Medium"}, {"name": "Green Corridor X", "congestion": "Low"}, {"name": req.destination, "congestion": "Low"}],
             "optimized": {
                 "fuelSaved": round(dist_km * 0.12, 2), "co2Reduced": round(dist_km * 0.28, 2), "baselineFuel": round(dist_km * 0.15, 2),

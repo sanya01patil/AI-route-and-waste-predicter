@@ -210,6 +210,16 @@
                             </select>
                         </div>
 
+                        <!-- AI Suggestion Tip -->
+                        <div id="ai-tip-container" style="display:none; margin-bottom:18px; animation: fadeIn 0.4s ease;">
+                            <div class="alert alert-info" style="margin-bottom:0; background:rgba(0,212,255,0.05); border:1px dashed var(--accent-blue);">
+                                <div style="display:flex; gap:10px; align-items:center;">
+                                    <span style="font-size:1.2rem;">💡</span>
+                                    <div id="ai-tip-text" style="font-size:0.85rem; font-weight:500; color:var(--accent-blue);">AI Suggestion: Fill locations to get a tip.</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <button class="btn btn-primary btn-block btn-lg" id="optimize-btn" onclick="runOptimizer()">
                             🤖 Analyze & Optimize Route
                         </button>
@@ -367,6 +377,8 @@
             document.getElementById('ai-processing').style.display = 'block';
             document.getElementById('results').style.display = 'none';
             document.getElementById('confidence-card').style.display = 'none';
+            
+
             document.getElementById('mint-success').style.display = 'none';
             document.getElementById('mint-card').style.display = 'block';
             document.getElementById('mint-btn').disabled = false;
@@ -410,6 +422,14 @@
                 document.getElementById('confidence-bar').style.width = data.aiConfidence + '%';
             }, 100);
             document.getElementById('analysis-time').textContent = `Analysis completed in ${data.analysisTime.toFixed(3)}s · EcoChain ML Engine v2.4`;
+
+            // Show AI Tip
+            if (data.aiTip) {
+                document.getElementById('ai-tip-container').style.display = 'block';
+                document.getElementById('ai-tip-text').textContent = data.aiTip;
+            } else {
+                document.getElementById('ai-tip-container').style.display = 'none';
+            }
 
             // Distance badge
             document.getElementById('distance-badge').textContent = `${data.distanceKm} km`;
