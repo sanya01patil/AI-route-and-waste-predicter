@@ -59,7 +59,7 @@ async def get_wallet(current_user: dict = Depends(get_current_user)):
 
 @router.get("/history")
 async def get_history(current_user: dict = Depends(get_current_user)):
-    tx_cursor = ledger_collection.find({"userId": current_user["id"]})
+    tx_cursor = await ledger_collection.find({"userId": current_user["id"]})
     user_txns = await tx_cursor.to_list(length=None)
     user_txns.sort(key=lambda x: x["timestamp"], reverse=True)
     
@@ -83,7 +83,7 @@ async def get_history(current_user: dict = Depends(get_current_user)):
 
 @router.get("/leaderboard")
 async def get_leaderboard():
-    users_cursor = users_collection.find({"role": {"$ne": "admin"}})
+    users_cursor = await users_collection.find({"role": {"$ne": "admin"}})
     users = await users_cursor.to_list(length=None)
     users.sort(key=lambda x: x.get("carbonCredits", 0), reverse=True)
     

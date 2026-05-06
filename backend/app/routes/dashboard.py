@@ -8,7 +8,7 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 @router.get("/stats")
 async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
-    tx_cursor = ledger_collection.find({"userId": user_id})
+    tx_cursor = await ledger_collection.find({"userId": user_id})
     user_txns = await tx_cursor.to_list(length=None)
     
     now = datetime.utcnow().timestamp() * 1000
@@ -39,10 +39,10 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
 
 @router.get("/admin")
 async def get_admin_dashboard(admin_user: dict = Depends(get_admin_user)):
-    users_cursor = users_collection.find({})
+    users_cursor = await users_collection.find({})
     all_users = await users_cursor.to_list(length=None)
     
-    tx_cursor = ledger_collection.find({})
+    tx_cursor = await ledger_collection.find({})
     all_txns = await tx_cursor.to_list(length=None)
     
     reg_users = [u for u in all_users if u.get("role") != "admin"]
