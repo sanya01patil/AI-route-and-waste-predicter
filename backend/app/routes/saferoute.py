@@ -1,20 +1,10 @@
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
-import random
-from datetime import datetime
-from dependencies import get_current_user
-from database import ledger_collection, users_collection
-from ai_engine import predict_route_metrics
-from weather_service import get_weather
-import uuid
+from ..dependencies import get_current_user
+from ..ml.engine import predict_route_metrics
+from ..services.weather import get_weather
+from ..models.route import AnalyzeRequest
 
 router = APIRouter(prefix="/api/saferoute", tags=["saferoute"])
-
-class AnalyzeRequest(BaseModel):
-    start: str
-    destination: str
-    timeOfDay: str
-    vehicleType: str
 
 ROAD_TYPES = ['Highway', 'City Road', 'Urban Expressway']
 RISK_ZONES = [
@@ -35,7 +25,6 @@ def build_route(name: str, index: int, seed: int, base_dist: float, is_night: bo
     dist = base_dist * dist_mult
     road_type = ROAD_TYPES[index % len(ROAD_TYPES)]
     
-    # Use Scikit-learn model for predictions
     preds = predict_route_metrics(dist, is_night, road_type, vehicle_type, weather_condition)
     
     base_rate = 0.05
@@ -63,16 +52,10 @@ def build_route(name: str, index: int, seed: int, base_dist: float, is_night: bo
     accident_risk = int(preds["accident_risk"])
     safety_rating = max(10, 100 - accident_risk - int(traffic*0.2))
     
-    fuel_factor = min(100, fuel_used * 10)
-    co2_factor = min(100, co2_emission * 10)
-    traffic_factor = traffic
-    safety_factor = 100 - safety_rating
-    
-    eco_score = round((fuel_factor * 0.4) + (co2_factor * 0.3) + (traffic_factor * 0.2) + (safety_factor * 0.1), 1)
+    eco_score = round((min(100, fuel_used * 10) * 0.4) + (min(100, co2_emission * 10) * 0.3) + (traffic * 0.2) + ((100 - safety_rating) * 0.1), 1)
     
     risk_label = "Low" if accident_risk < 20 else "Moderate" if accident_risk < 50 else "High"
     traffic_level = "Low Traffic" if traffic < 40 else "Moderate" if traffic < 75 else "Heavy Congestion"
-    traffic_color = "green" if traffic < 40 else "yellow" if traffic < 75 else "red"
     
     return {
         "id": f"route_{index}",
@@ -86,7 +69,7 @@ def build_route(name: str, index: int, seed: int, base_dist: float, is_night: bo
         "avgSpeed": avg_speed,
         "traffic": traffic,
         "trafficLevel": traffic_level,
-        "trafficColor": traffic_color,
+        "trafficColor": "green" if traffic < 40 else "yellow" if traffic < 75 else "red",
         "accidentRisk": accident_risk,
         "safetyRating": safety_rating,
         "ecoScore": eco_score,
@@ -102,7 +85,6 @@ async def analyze_routes(req: AnalyzeRequest, current_user: dict = Depends(get_c
     is_night = req.timeOfDay == 'night'
     base_dist = 8 + (seed % 83)
     
-    # Real-time Weather Integration
     weather = await get_weather(req.start)
     weather_condition = weather["condition"] if weather else "Clear"
     
@@ -112,7 +94,6 @@ async def analyze_routes(req: AnalyzeRequest, current_user: dict = Depends(get_c
         build_route("Fast Expressway", 2, seed, base_dist, is_night, req.vehicleType, "#ef4444", "exp", weather_condition),
     ]
     
-    # Recommended route (lowest eco_score)
     best_route = min(routes, key=lambda x: x["ecoScore"])
     for r in routes:
         r["recommended"] = (r["id"] == best_route["id"])
@@ -120,60 +101,23 @@ async def analyze_routes(req: AnalyzeRequest, current_user: dict = Depends(get_c
     start_coord = [19.07 + (seed%10)*0.01, 72.87 + (seed%10)*0.01]
     dest_coord = [start_coord[0] + base_dist*0.005, start_coord[1] + base_dist*0.005]
     
-    map_data = {
-        "startCoord": start_coord,
-        "destCoord": dest_coord,
-        "polylines": []
-    }
+    map_data = {"startCoord": start_coord, "destCoord": dest_coord, "polylines": []}
     
     for i, r in enumerate(routes):
         offset = i * 0.008
-        points = [
-            start_coord,
-            [start_coord[0] + (dest_coord[0]-start_coord[0])/2 + offset, start_coord[1] + (dest_coord[1]-start_coord[1])/2 - offset],
-            dest_coord
-        ]
+        points = [start_coord, [start_coord[0] + (dest_coord[0]-start_coord[0])/2 + offset, start_coord[1] + (dest_coord[1]-start_coord[1])/2 - offset], dest_coord]
         markers = []
         if r["accidentRisk"] > 30:
             hazard = RISK_ZONES[seed % len(RISK_ZONES)]
-            markers.append({
-                "lat": points[1][0], "lng": points[1][1],
-                "icon": hazard["type"].split(" ")[0],
-                "desc": hazard["desc"]
-            })
+            markers.append({"lat": points[1][0], "lng": points[1][1], "icon": hazard["type"].split(" ")[0], "desc": hazard["desc"]})
         
-        map_data["polylines"].append({
-            "coords": points,
-            "color": r["color"],
-            "popup": f"<b>{r['name']}</b><br>Score: {r['ecoScore']} | Risk: {r['accidentRisk']}%",
-            "markers": markers
-        })
+        map_data["polylines"].append({"coords": points, "color": r["color"], "popup": f"<b>{r['name']}</b>", "markers": markers})
         
     return {
-        "start": req.start,
-        "destination": req.destination,
-        "timeOfDay": req.timeOfDay,
-        "vehicleType": req.vehicleType,
-        "routes": routes,
-        "mapData": map_data,
-        "weather": weather,
-        "recommendation": {
-            "routeId": best_route["id"],
-            "routeName": best_route["name"],
-            "reasoning": [
-                f"Lowest Eco Score ({best_route['ecoScore']})",
-                f"Minimal signal stops ({best_route['stopFrequency']})",
-                f"Avoids high-risk accident zones (Risk: {best_route['accidentRisk']}%)"
-            ]
-        }
+        "start": req.start, "destination": req.destination, "routes": routes, "mapData": map_data, "weather": weather,
+        "recommendation": {"routeId": best_route["id"], "routeName": best_route["name"]}
     }
 
 @router.get("/conditions")
 async def get_conditions():
-    return {
-        "conditions": [
-            {"type": "🚧", "area": "Highway A1", "desc": "Lane closure due to maintenance"},
-            {"type": "🛑", "area": "Downtown Intersection", "desc": "Recent accident reported"},
-            {"type": "☔", "area": "City Limits", "desc": "Wet road conditions"}
-        ]
-    }
+    return {"conditions": [{"type": "🚧", "area": "Highway A1", "desc": "Maintenance"}]}

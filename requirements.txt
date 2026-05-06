@@ -8,3 +8,7 @@ passlib[bcrypt]
 python-jose[cryptography]
 websockets
 python-multipart
+python-dotenv
+httpx
+numpy
+pandas

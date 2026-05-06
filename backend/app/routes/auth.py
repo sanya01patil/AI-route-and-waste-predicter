@@ -1,11 +1,11 @@
-from fastapi import APIRouter, HTTPException, Depends, status
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, HTTPException, Depends
 from passlib.context import CryptContext
-from jose import jwt, JWTError
+from jose import jwt
 from datetime import datetime, timedelta
 import os
 import uuid
-from database import users_collection
+from ..database.connection import users_collection
+from ..models.auth import UserCreate, UserLogin
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -13,15 +13,6 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = os.getenv("JWT_SECRET", "ecochain-ai-secret-2024-hackathon")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
-
-class UserCreate(BaseModel):
-    name: str
-    email: EmailStr
-    password: str
-
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
 
 def get_password_hash(password):
     return pwd_context.hash(password)

@@ -28,37 +28,27 @@ manager = ConnectionManager()
 @router.websocket("/ws/live")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
-    
-    # Send an initial connection message
     await websocket.send_json({
         "type": "connection",
         "message": "Connected to EcoChain AI Live Traffic Stream",
         "timestamp": datetime.utcnow().timestamp() * 1000
     })
-    
     try:
         while True:
-            # We don't necessarily expect clients to send messages,
-            # but we keep the connection open to receive.
-            data = await websocket.receive_text()
+            await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
-# A background task to simulate live traffic updates
 async def live_traffic_simulator():
     import random
-    
     events = [
         {"type": "alert", "icon": "🚧", "area": "Highway A1", "desc": "Lane closure due to maintenance", "severity": "moderate"},
-        {"type": "alert", "icon": "🛑", "area": "Downtown Intersection", "desc": "Recent accident reported, heavy congestion", "severity": "high"},
-        {"type": "alert", "icon": "☔", "area": "City Limits", "desc": "Wet road conditions, drive safely", "severity": "low"},
-        {"type": "clear", "icon": "✅", "area": "Expressway South", "desc": "Traffic cleared, flow returning to normal", "severity": "low"},
-        {"type": "alert", "icon": "⚠️", "area": "Ring Road", "desc": "Unexpected delay, AI rerouting active", "severity": "moderate"}
+        {"type": "alert", "icon": "🛑", "area": "Downtown Intersection", "desc": "Recent accident reported", "severity": "high"},
+        {"type": "alert", "icon": "☔", "area": "City Limits", "desc": "Wet road conditions", "severity": "low"},
+        {"type": "clear", "icon": "✅", "area": "Expressway South", "desc": "Traffic cleared", "severity": "low"}
     ]
-    
     while True:
         await asyncio.sleep(random.randint(15, 30))
         event = random.choice(events)
         event["timestamp"] = datetime.utcnow().timestamp() * 1000
-        
         await manager.broadcast(json.dumps(event))

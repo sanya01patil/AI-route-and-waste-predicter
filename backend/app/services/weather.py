@@ -1,10 +1,10 @@
 import httpx
 import os
 
-API_KEY = "0d407fe7ab72805de9370a7139e43d29"
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "0d407fe7ab72805de9370a7139e43d29")
 
 async def get_weather(city: str):
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units=metric"
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(url, timeout=5.0)

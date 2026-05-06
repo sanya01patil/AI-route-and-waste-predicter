@@ -1,11 +1,8 @@
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 
-# Mock Training Data
 # Features: [distance, time_of_day (0=Day, 1=Night), road_type (0=Highway, 1=City, 2=Expressway), vehicle_type (0=Gas, 1=EV)]
-# Targets: congestion_penalty, accident_risk
-
 X_train = np.array([
     [15, 0, 0, 0], [15, 1, 0, 0], [5, 0, 1, 0], [5, 1, 1, 0],
     [30, 0, 2, 0], [30, 1, 2, 0], [15, 0, 0, 1], [15, 1, 0, 1]

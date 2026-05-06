@@ -2,7 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 import os
-from database import users_collection
+from .database.connection import users_collection
 
 security = HTTPBearer()
 SECRET_KEY = os.getenv("JWT_SECRET", "ecochain-ai-secret-2024-hackathon")
