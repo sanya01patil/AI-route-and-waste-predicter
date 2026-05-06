@@ -848,10 +848,9 @@
                 const polyline = new google.maps.Polyline({
                     path,
                     geodesic: true,
-                    strokeColor: pl.color,
-                    strokeOpacity: isRec ? 0.95 : 0.55,
-                    strokeWeight: isRec ? 7 : 4,
-                    icons: i === 1 ? [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 }, offset: '0', repeat: '15px' }] : []
+                    strokeColor: pl.trafficColor === 'red' ? '#ef4444' : pl.trafficColor === 'yellow' ? '#f59e0b' : '#22c55e',
+                    strokeOpacity: isRec ? 0.95 : 0.4,
+                    strokeWeight: isRec ? 8 : 4,
                 });
                 polyline.setMap(map);
                 polyline.addListener('click', () => {
@@ -869,11 +868,11 @@
                         label: { text: m.icon, fontSize: '16px' },
                         icon: {
                             path: google.maps.SymbolPath.CIRCLE,
-                            scale: 14,
-                            fillColor: 'rgba(6,16,9,0.85)',
+                            scale: 12,
+                            fillColor: m.icon === '🛑' ? '#ef4444' : m.icon === '🚧' ? '#f59e0b' : '#00ff88',
                             fillOpacity: 0.9,
-                            strokeColor: 'rgba(245,158,11,0.6)',
-                            strokeWeight: 1
+                            strokeColor: '#fff',
+                            strokeWeight: 2
                         }
                     });
                     const infoWin = new google.maps.InfoWindow({ content: `<small>${m.desc}</small>` });

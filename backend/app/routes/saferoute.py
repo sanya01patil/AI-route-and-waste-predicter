@@ -1,118 +1,156 @@
 from fastapi import APIRouter, Depends
+import random
+import time
+from datetime import datetime
 from ..dependencies import get_current_user
-from ..ml.engine import predict_route_metrics
 from ..services.weather import get_weather
 from ..models.route import AnalyzeRequest
 
 router = APIRouter(prefix="/api/saferoute", tags=["saferoute"])
 
-ROAD_TYPES = ['Highway', 'City Road', 'Urban Expressway']
-RISK_ZONES = [
-    {'type': '⚠️ High-risk zone', 'desc': 'Accident-prone intersection'},
-    {'type': '🚧 Construction', 'desc': 'Active road construction'},
-    {'type': '🛑 Accident hotspot', 'desc': 'Recent accident reported'},
-    {'type': '🔧 Poor condition', 'desc': 'Road digging / damaged surface'},
-]
-
-def hash_str(s: str) -> int:
-    h = 5381
-    for char in s:
-        h = ((h << 5) + h) ^ ord(char)
-    return abs(h)
-
-def build_route(name: str, index: int, seed: int, base_dist: float, is_night: bool, vehicle_type: str, color: str, rtype: str, weather_condition: str = "Clear"):
-    dist_mult = 1.0 if index == 0 else (1.15 if index == 1 else 1.3)
-    dist = base_dist * dist_mult
-    road_type = ROAD_TYPES[index % len(ROAD_TYPES)]
-    
-    preds = predict_route_metrics(dist, is_night, road_type, vehicle_type, weather_condition)
-    
-    base_rate = 0.05
-    if vehicle_type == 'suv': base_rate = 0.08
-    elif vehicle_type == 'motorbike': base_rate = 0.03
-    elif vehicle_type == 'electric': base_rate = 0.01
-    elif vehicle_type == 'bus': base_rate = 0.02
-    
-    traffic = int((seed % 40) + index * 15 + preds["congestion_penalty"])
-    traffic = max(5, min(95, traffic))
-    
-    stop_freq = int(dist * (0.5 if road_type == 'City Road' else 0.1) * (traffic/50))
-    avg_speed = int((100 - traffic) * (1.2 if road_type == 'Highway' else 0.8))
-    
-    base_fuel = base_rate * dist
-    congestion_penalty = (traffic / 100) * (base_fuel * 0.4)
-    signal_penalty = stop_freq * 0.05 * base_rate
-    instability_factor = (traffic - 60) * 0.01 if traffic > 60 else 0
-    
-    fuel_used = round(base_fuel + congestion_penalty + signal_penalty + instability_factor, 2)
-    co2_emission = round(fuel_used * 2.31, 2) if vehicle_type != 'electric' else round(fuel_used * 0.5, 2)
-    
-    time_minutes = int((dist / max(1, avg_speed)) * 60)
-    
-    accident_risk = int(preds["accident_risk"])
-    safety_rating = max(10, 100 - accident_risk - int(traffic*0.2))
-    
-    eco_score = round((min(100, fuel_used * 10) * 0.4) + (min(100, co2_emission * 10) * 0.3) + (traffic * 0.2) + ((100 - safety_rating) * 0.1), 1)
-    
-    risk_label = "Low" if accident_risk < 20 else "Moderate" if accident_risk < 50 else "High"
-    traffic_level = "Low Traffic" if traffic < 40 else "Moderate" if traffic < 75 else "Heavy Congestion"
-    
-    return {
-        "id": f"route_{index}",
-        "name": name,
-        "type": rtype,
-        "distanceKm": round(dist, 1),
-        "timeMinutes": time_minutes,
-        "fuelUsed": fuel_used,
-        "co2Emission": co2_emission,
-        "stopFrequency": stop_freq,
-        "avgSpeed": avg_speed,
-        "traffic": traffic,
-        "trafficLevel": traffic_level,
-        "trafficColor": "green" if traffic < 40 else "yellow" if traffic < 75 else "red",
-        "accidentRisk": accident_risk,
-        "safetyRating": safety_rating,
-        "ecoScore": eco_score,
-        "riskLabel": risk_label,
-        "roadType": road_type,
-        "color": color,
-        "creditsEarned": 50 if index == 0 else 0
-    }
-
 @router.post("/analyze")
-async def analyze_routes(req: AnalyzeRequest, current_user: dict = Depends(get_current_user)):
-    seed = hash_str(req.start.lower() + req.destination.lower())
-    is_night = req.timeOfDay == 'night'
-    base_dist = 8 + (seed % 83)
+async def analyze_safe_route(req: AnalyzeRequest, current_user: dict = Depends(get_current_user)):
+    # Simulating AI analysis time
+    start_time = time.time()
     
+    # Get weather for the start location
     weather = await get_weather(req.start)
-    weather_condition = weather["condition"] if weather else "Clear"
     
+    # Mock data generation based on start/dest
+    seed = sum(ord(c) for c in req.start + req.destination)
+    random.seed(seed)
+    
+    dist_km = round(5 + random.random() * 20, 1)
+    
+    # Generate 3 routes: Eco-Safe (Green), Standard (Yellow), Fast/Express (Red)
     routes = [
-        build_route("Eco Safe Route", 0, seed, base_dist, is_night, req.vehicleType, "#22c55e", "eco", weather_condition),
-        build_route("Standard Route", 1, seed, base_dist, is_night, req.vehicleType, "#f59e0b", "std", weather_condition),
-        build_route("Fast Expressway", 2, seed, base_dist, is_night, req.vehicleType, "#ef4444", "exp", weather_condition),
+        {
+            "id": "eco-1",
+            "name": "Eco-Safe Optimized",
+            "type": "eco",
+            "recommended": True,
+            "timeMinutes": int(dist_km * 2.8),
+            "distanceKm": dist_km,
+            "safetyRating": 94,
+            "ecoScore": 92,
+            "accidentRisk": 12,
+            "riskLabel": "Low",
+            "traffic": 15,
+            "trafficLevel": "Free Flow",
+            "trafficColor": "green",
+            "fuelUsed": round(dist_km * 0.08, 2),
+            "co2Emission": round(dist_km * 0.18, 2),
+            "avgSpeed": 42,
+            "stopFrequency": 2,
+            "roadType": "Local Corridor",
+            "color": "#00ff88",
+            "creditsEarned": int(dist_km * 1.5),
+            "warningZones": [
+                {"type": "⚠️ Narrow Road", "desc": "Proceed with caution", "km": round(dist_km * 0.4, 1)}
+            ]
+        },
+        {
+            "id": "std-1",
+            "name": "Standard Path",
+            "type": "std",
+            "recommended": False,
+            "timeMinutes": int(dist_km * 2.2),
+            "distanceKm": round(dist_km * 0.9, 1),
+            "safetyRating": 78,
+            "ecoScore": 65,
+            "accidentRisk": 34,
+            "riskLabel": "Moderate",
+            "traffic": 45,
+            "trafficLevel": "Medium",
+            "trafficColor": "yellow",
+            "fuelUsed": round(dist_km * 0.12, 2),
+            "co2Emission": round(dist_km * 0.28, 2),
+            "avgSpeed": 55,
+            "stopFrequency": 5,
+            "roadType": "Main Avenue",
+            "color": "#f59e0b",
+            "creditsEarned": 0,
+            "warningZones": [
+                {"type": "🚧 Construction", "desc": "Reduced lane width", "km": round(dist_km * 0.2, 1)},
+                {"type": "🛑 Accident Prone", "desc": "Historical hotspot", "km": round(dist_km * 0.7, 1)}
+            ]
+        },
+        {
+            "id": "exp-1",
+            "name": "Express Route",
+            "type": "exp",
+            "recommended": False,
+            "timeMinutes": int(dist_km * 1.8),
+            "distanceKm": round(dist_km * 1.1, 1),
+            "safetyRating": 62,
+            "ecoScore": 45,
+            "accidentRisk": 58,
+            "riskLabel": "High",
+            "traffic": 85,
+            "trafficLevel": "Heavy Traffic",
+            "trafficColor": "red",
+            "fuelUsed": round(dist_km * 0.18, 2),
+            "co2Emission": round(dist_km * 0.42, 2),
+            "avgSpeed": 68,
+            "stopFrequency": 8,
+            "roadType": "Highway / Flyover",
+            "color": "#ef4444",
+            "creditsEarned": 0,
+            "warningZones": [
+                {"type": "🛑 Heavy Congestion", "desc": "Significant delays likely", "km": round(dist_km * 0.5, 1)},
+                {"type": "🔧 Poor Road", "desc": "Potholes reported", "km": round(dist_km * 0.9, 1)}
+            ]
+        }
     ]
     
-    best_route = min(routes, key=lambda x: x["ecoScore"])
-    for r in routes:
-        r["recommended"] = (r["id"] == best_route["id"])
-        
-    start_coord = [19.07 + (seed%10)*0.01, 72.87 + (seed%10)*0.01]
-    dest_coord = [start_coord[0] + base_dist*0.005, start_coord[1] + base_dist*0.005]
+    # Mock Coordinates for Mumbai area
+    base_lat, base_lng = 19.0760, 72.8777
     
-    map_data = {"startCoord": start_coord, "destCoord": dest_coord, "polylines": []}
+    map_data = {
+        "startCoord": [base_lat, base_lng],
+        "destCoord": [base_lat + 0.05, base_lng + 0.05],
+        "polylines": []
+    }
     
     for i, r in enumerate(routes):
-        offset = i * 0.008
-        points = [start_coord, [start_coord[0] + (dest_coord[0]-start_coord[0])/2 + offset, start_coord[1] + (dest_coord[1]-start_coord[1])/2 - offset], dest_coord]
+        # Generate some zig-zag paths
+        coords = [[base_lat, base_lng]]
+        segments = 8
+        curr_lat, curr_lng = base_lat, base_lng
+        lat_step = (0.05 + random.random() * 0.02) / segments
+        lng_step = (0.05 + random.random() * 0.02) / segments
+        
+        for _ in range(segments):
+            curr_lat += lat_step + (random.random() - 0.5) * 0.01
+            curr_lng += lng_step + (random.random() - 0.5) * 0.01
+            coords.append([curr_lat, curr_lng])
+        
+        coords.append([base_lat + 0.05, base_lng + 0.05])
+        
+        # Add markers along the route
         markers = []
-        if r["accidentRisk"] > 30:
-            hazard = RISK_ZONES[seed % len(RISK_ZONES)]
-            markers.append({"lat": points[1][0], "lng": points[1][1], "icon": hazard["type"].split(" ")[0], "desc": hazard["desc"]})
-        
-        map_data["polylines"].append({"coords": points, "color": r["color"], "popup": f"<b>{r['name']}</b>", "markers": markers})
-        
+        for wz in r["warningZones"]:
+            # Pick a middle point for the marker
+            idx = int(len(coords) / 2) + random.randint(-1, 1)
+            markers.append({
+                "lat": coords[idx][0],
+                "lng": coords[idx][1],
+                "type": wz["type"],
+                "desc": wz["desc"],
+                "icon": "⚠️" if "Accident" in wz["type"] else "🚧" if "Construction" in wz["type"] else "🛑" if "Heavy" in wz["type"] else "🔧" if "Poor" in wz["type"] else "📍"
+            })
+
+        map_data["polylines"].append({
+            "routeId": r["id"],
+            "coords": coords,
+            "color": r["color"],
+            "trafficColor": r["trafficColor"],
+            "markers": markers,
+            "popup": f"<b>{r['name']}</b><br>Traffic: {r['trafficLevel']}<br>Risk: {r['riskLabel']}"
+        })
+
+    best_route = routes[0]
+    
     return {
         "start": req.start, "destination": req.destination, "routes": routes, "mapData": map_data, "weather": weather,
         "recommendation": {
@@ -127,5 +165,16 @@ async def analyze_routes(req: AnalyzeRequest, current_user: dict = Depends(get_c
     }
 
 @router.get("/conditions")
-async def get_conditions():
-    return {"conditions": [{"type": "🚧", "area": "Highway A1", "desc": "Maintenance"}]}
+async def get_road_conditions():
+    areas = ["Highway A1", "Downtown Tunnel", "Coastal Road", "Eastern Express", "Linking Road"]
+    types = ["🚧 Construction", "🛑 Accident", "☔ Waterlogging", "🚜 Maintenance", "🚦 Signal Failure"]
+    
+    conditions = []
+    for _ in range(4):
+        conditions.append({
+            "area": random.choice(areas),
+            "type": random.choice(types),
+            "desc": "Traffic slowing down, AI suggests rerouting",
+            "severity": random.choice(["low", "medium", "high"])
+        })
+    return {"conditions": conditions}
