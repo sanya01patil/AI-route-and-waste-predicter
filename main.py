@@ -6,7 +6,7 @@ import asyncio
 import os
 
 from database import init_db
-from routers import auth, saferoute, dashboard, blockchain, websockets
+from routers import auth, saferoute, dashboard, blockchain, websockets, ai
 
 app = FastAPI(title="EcoChain AI")
 
@@ -24,6 +24,7 @@ app.include_router(saferoute.router)
 app.include_router(dashboard.router)
 app.include_router(blockchain.router)
 app.include_router(websockets.router)
+app.include_router(ai.router)
 
 @app.on_event("startup")
 async def startup_event():
