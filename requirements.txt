@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+motor
+pymongo
+redis
+scikit-learn
+passlib[bcrypt]
+python-jose[cryptography]
+websockets
+python-multipart

@@ -7,8 +7,8 @@
     <title>SafeRoute AI – Intelligent Safety & Eco Routing</title>
     <link rel="stylesheet" href="/css/style.css">
 
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBAaEPI0I08kpDhhCe74l3D1jXVgM7UEHo"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
@@ -40,12 +40,8 @@
             position: relative;
         }
 
-        /* Custom Leaflet skin */
-        .leaflet-container {
-            background: #061009 !important;
-        }
-
-        .leaflet-tile-pane {
+        /* Google Maps skin */
+        .gm-style {
             filter: hue-rotate(120deg) saturate(0.6) brightness(0.55) contrast(1.1);
         }
 
@@ -310,6 +306,30 @@
             background: rgba(239, 68, 68, 0.15);
             color: #ef4444;
             border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        /* ── Weather Badge ─────────────────────────────────────────── */
+        .weather-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
+
+        .weather-badge img {
+            width: 24px;
+            height: 24px;
+        }
+
+        .weather-temp {
+            font-weight: 700;
+            color: var(--text-primary);
         }
 
         /* ── Safety bar ────────────────────────────────────────────── */
@@ -712,27 +732,32 @@
         </main>
     </div>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/js/api.js"></script>
 
     <script>
         requireAuth();
         populateSidebar();
 
-        // ── Map init ──────────────────────────────────────────────────────────
-        const map = L.map('map', { zoomControl: true, attributionControl: false }).setView([19.07, 72.87], 12);
+        // ── Google Maps init ───────────────────────────────────────────────────
+        let map = new google.maps.Map(document.getElementById('map'), {
+            center: { lat: 19.07, lng: 72.87 },
+            zoom: 12,
+            mapTypeId: 'roadmap',
+            styles: [
+                { elementType: 'geometry', stylers: [{ color: '#0a1f10' }] },
+                { elementType: 'labels.text.fill', stylers: [{ color: '#8baa98' }] },
+                { elementType: 'labels.text.stroke', stylers: [{ color: '#061009' }] },
+                { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1a3a24' }] },
+                { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#00ff8820' }] },
+                { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#00c466' }] },
+                { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0d2a1a' }] },
+                { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+                { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+            ]
+        });
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 18,
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
-
-        // Attribution pill (light touch)
-        L.control.attribution({ position: 'bottomright', prefix: '' }).addTo(map);
-
-        let routeLayers = [];
-        let markerLayers = [];
+        let routePolylines = [];
+        let routeMarkers = [];
         let radarChart = null;
         let currentData = null;
         let selectedRouteIdx = 0;
@@ -812,46 +837,92 @@
 
         // ── Render Results ─────────────────────────────────────────────────────
         function renderResults(data) {
-            // Map: draw polylines
-            routeLayers.forEach(l => map.removeLayer(l));
-            markerLayers.forEach(l => map.removeLayer(l));
-            routeLayers = []; markerLayers = [];
+            // Map: clear old polylines/markers
+            routePolylines.forEach(p => p.setMap(null));
+            routeMarkers.forEach(m => m.setMap(null));
+            routePolylines = []; routeMarkers = [];
 
-            const mapBounds = [];
+            const bounds = new google.maps.LatLngBounds();
+
             data.mapData.polylines.forEach((pl, i) => {
                 const isRec = data.routes[i].recommended;
-                const line = L.polyline(pl.coords, {
-                    color: pl.color,
-                    weight: isRec ? 7 : 4,
-                    opacity: isRec ? 0.95 : 0.55,
-                    dashArray: i === 1 ? '8 6' : i === 2 ? '4 4' : null,
-                }).addTo(map);
-                line.bindPopup(pl.popup);
-                if (isRec) line.on('add', () => line.bringToFront());
-                routeLayers.push(line);
-                pl.coords.forEach(c => mapBounds.push(c));
+                const path = pl.coords.map(c => ({ lat: c[0], lng: c[1] }));
+
+                const polyline = new google.maps.Polyline({
+                    path,
+                    geodesic: true,
+                    strokeColor: pl.color,
+                    strokeOpacity: isRec ? 0.95 : 0.55,
+                    strokeWeight: isRec ? 7 : 4,
+                    icons: i === 1 ? [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 }, offset: '0', repeat: '15px' }] : []
+                });
+                polyline.setMap(map);
+                polyline.addListener('click', () => {
+                    new google.maps.InfoWindow({ content: pl.popup }).open(map);
+                });
+                routePolylines.push(polyline);
+                path.forEach(p => bounds.extend(p));
 
                 // Warning markers
                 pl.markers.forEach(m => {
-                    const icon = L.divIcon({
-                        html: `<div style="font-size:1.1rem; background:rgba(6,16,9,0.85); border:1px solid rgba(245,158,11,0.4); border-radius:6px; padding:3px 5px; white-space:nowrap;">${m.icon}</div>`,
-                        iconSize: [32, 28], iconAnchor: [16, 14], className: ''
+                    const marker = new google.maps.Marker({
+                        position: { lat: m.lat, lng: m.lng },
+                        map,
+                        title: m.desc,
+                        label: { text: m.icon, fontSize: '16px' },
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 14,
+                            fillColor: 'rgba(6,16,9,0.85)',
+                            fillOpacity: 0.9,
+                            strokeColor: 'rgba(245,158,11,0.6)',
+                            strokeWeight: 1
+                        }
                     });
-                    const mkr = L.marker([m.lat, m.lng], { icon })
-                        .addTo(map).bindPopup(`<small>${m.desc}</small>`);
-                    markerLayers.push(mkr);
+                    const infoWin = new google.maps.InfoWindow({ content: `<small>${m.desc}</small>` });
+                    marker.addListener('click', () => infoWin.open(map, marker));
+                    routeMarkers.push(marker);
                 });
             });
 
             // Start & end markers
-            const startIcon = L.divIcon({ html: '<div style="width:14px;height:14px;border-radius:50%;background:#00ff88;border:3px solid #000;box-shadow:0 0 8px #00ff88;"></div>', iconSize: [14, 14], iconAnchor: [7, 7], className: '' });
-            const endIcon = L.divIcon({ html: '<div style="width:14px;height:14px;border-radius:50%;background:#ef4444;border:3px solid #000;box-shadow:0 0 8px #ef4444;"></div>', iconSize: [14, 14], iconAnchor: [7, 7], className: '' });
-            L.marker(data.mapData.startCoord, { icon: startIcon }).addTo(map).bindPopup('<b>Start: ' + data.start + '</b>');
-            L.marker(data.mapData.destCoord, { icon: endIcon }).addTo(map).bindPopup('<b>Destination: ' + data.destination + '</b>');
-            if (mapBounds.length > 1) map.fitBounds(mapBounds, { padding: [30, 30] });
+            const startMarker = new google.maps.Marker({
+                position: { lat: data.mapData.startCoord[0], lng: data.mapData.startCoord[1] },
+                map,
+                title: 'Start: ' + data.start,
+                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#00ff88', fillOpacity: 1, strokeColor: '#000', strokeWeight: 2 }
+            });
+            const endMarker = new google.maps.Marker({
+                position: { lat: data.mapData.destCoord[0], lng: data.mapData.destCoord[1] },
+                map,
+                title: 'Destination: ' + data.destination,
+                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#ef4444', fillOpacity: 1, strokeColor: '#000', strokeWeight: 2 }
+            });
+            routeMarkers.push(startMarker, endMarker);
+            if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 40 });
 
-            // Recommendation
+            // Recommendation + Weather
             document.getElementById('rec-name').textContent = data.recommendation.routeName;
+            
+            // Weather badge
+            const weatherBadgeId = 'weather-info-badge';
+            let wBadge = document.getElementById(weatherBadgeId);
+            if (!wBadge) {
+                wBadge = document.createElement('div');
+                wBadge.id = weatherBadgeId;
+                wBadge.className = 'weather-badge';
+                document.getElementById('rec-name').insertAdjacentElement('afterend', wBadge);
+            }
+            if (data.weather) {
+                wBadge.style.display = 'inline-flex';
+                wBadge.innerHTML = `
+                    <img src="http://openweathermap.org/img/wn/${data.weather.icon}.png" alt="weather icon">
+                    <span>${data.start}: <span class="weather-temp">${data.weather.temp}&deg;C</span> &mdash; ${data.weather.description} &middot; Humidity: ${data.weather.humidity}% &middot; Wind: ${data.weather.wind_speed} m/s</span>
+                `;
+            } else {
+                wBadge.style.display = 'none';
+            }
+
             document.getElementById('rec-reasons').innerHTML = data.recommendation.reasoning.map(r =>
                 `<div class="rec-reason">${r}</div>`
             ).join('');

@@ -204,3 +204,31 @@ function shortenAddr(addr) {
     if (!addr || addr.length < 12) return addr;
     return addr.slice(0, 8) + '...' + addr.slice(-6);
 }
+
+// ─── WebSocket Live Traffic ────────────────────────────────────────────────
+function initLiveTraffic() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/live`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'alert' || data.type === 'clear') {
+                const toastType = data.severity === 'high' ? 'error' : (data.severity === 'moderate' ? 'warn' : 'info');
+                const msg = `<b>${data.icon} ${data.area}</b><br>${data.desc}`;
+                showToast(msg, toastType, 6000);
+            }
+        } catch (e) {
+            console.log("WebSocket message:", event.data);
+        }
+    };
+
+    ws.onclose = () => {
+        console.log("Live traffic stream disconnected. Reconnecting in 5s...");
+        setTimeout(initLiveTraffic, 5000);
+    };
+}
+
+// Start WebSocket connection on load
+window.addEventListener('load', initLiveTraffic);
