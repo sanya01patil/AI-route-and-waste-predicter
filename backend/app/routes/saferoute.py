@@ -158,7 +158,7 @@ async def analyze_safe_route(req: AnalyzeRequest, current_user: dict = Depends(g
             "routeName": best_route["name"],
             "reasoning": [
                 f"Lowest Eco Score ({best_route['ecoScore']})",
-                f"Minimal signal stops ({best_route['stopFrequency']})",
+                f"Recommended for your {req.vehicleType or 'vehicle'}",
                 f"Avoids high-risk accident zones (Risk: {best_route['accidentRisk']}%)"
             ]
         }
